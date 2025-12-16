@@ -4,10 +4,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from '@/src/components/DashboardLayout';
-import { Card } from '@/src/components/Card';
-import { Button } from '@/src/components/Button';
-import { Badge } from '@/src/components/Badge';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
+import { Badge } from '@/components/Badge';
 import Link from 'next/link';
 
 interface TrackingEvent {
@@ -46,7 +46,10 @@ interface ShipmentDetail {
   events: TrackingEvent[];
 }
 
-export default function ShipmentDetailsPage({ params }: { params: { id: string } }) {
+import { use } from 'react';
+
+export default function ShipmentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [shipment, setShipment] = useState<ShipmentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,7 +57,7 @@ export default function ShipmentDetailsPage({ params }: { params: { id: string }
   useEffect(() => {
     const fetchShipment = async () => {
       try {
-        const response = await fetch(`/api/shipments/${params.id}`);
+        const response = await fetch(`/api/shipments/${id}`);
         if (!response.ok) {
           setError('Shipment not found');
           setIsLoading(false);
@@ -62,7 +65,7 @@ export default function ShipmentDetailsPage({ params }: { params: { id: string }
         }
         const data = await response.json();
         setShipment(data);
-      } catch (err) {
+      } catch {
         setError('Failed to fetch shipment details');
       } finally {
         setIsLoading(false);
@@ -70,7 +73,7 @@ export default function ShipmentDetailsPage({ params }: { params: { id: string }
     };
 
     fetchShipment();
-  }, [params.id]);
+  }, [id]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {

@@ -25,7 +25,7 @@ function getUserIdFromAuth(request: NextRequest): string | null {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromAuth(request);
@@ -33,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Get shipment
     const { data: shipment, error: shipmentError } = await supabase

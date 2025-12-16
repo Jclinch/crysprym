@@ -23,7 +23,7 @@ interface ShipmentDetail {
   progress_step: string;
   created_at: string;
   updated_at: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean | object>;
 }
 
 const STATUS_OPTIONS = [
