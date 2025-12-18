@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Card } from '@/components/Card';
 import { createClient } from '@/utils/supabase/client';
 import { Input } from '@/components/Input';
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [newLocation, setNewLocation] = useState('');
-  const [newWaybill, setNewWaybill] = useState('');
+  // Waybill editing removed from admin; users provide on creation
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [newImagePreview, setNewImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -263,7 +264,6 @@ export default function AdminDashboard() {
   const openModal = async (shipment: NormalizedShipment) => {
     setSelectedShipment(shipment);
     setNewStatus(shipment.progressStep);
-    setNewWaybill(shipment.trackingNumber);
     setIsModalOpen(true);
     setIsModalLoading(true);
     
@@ -284,7 +284,6 @@ export default function AdminDashboard() {
            data.status === 'delivered' ? 'delivered' : 
            data.status === 'in_transit' ? 'in_transit' : 'pending');
         setNewStatus(progressStep);
-        setNewWaybill(data.tracking_number || shipment.trackingNumber);
       }
     } catch (e) {
       console.error('Failed to fetch shipment details:', e);
@@ -299,7 +298,6 @@ export default function AdminDashboard() {
     setShipmentDetails(null);
     setNewStatus('');
     setNewLocation('');
-    setNewWaybill('');
     setNewImageFile(null);
     setNewImagePreview('');
     setUploadingImage(false);
@@ -344,7 +342,6 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           status: newStatus, 
           location: newLocation,
-          waybillNumber: newWaybill,
           packageImageBucket,
           packageImagePath,
           packageImageUrl,
@@ -360,7 +357,6 @@ export default function AdminDashboard() {
                   ...s, 
                   status: newStatus, 
                   progressStep: newStatus,
-                  trackingNumber: newWaybill || s.trackingNumber,
                   destination: newLocation.trim() || s.destination
                 } 
               : s
@@ -681,14 +677,13 @@ export default function AdminDashboard() {
                     Update Shipment
                   </h3>
 
-                  {/* Waybill Number */}
-                  <label className="text-sm mb-1 text-gray-600">Waybill Number</label>
-                  <Input
-                    placeholder="e.g. WAY-001"
-                    value={newWaybill}
-                    onChange={(e) => setNewWaybill(e.target.value)}
-                    className="mb-4"
-                  />
+                  {/* Waybill Number — read-only (user-managed during creation) */}
+                  <div className="mb-4">
+                    <p className="text-sm mb-1 text-gray-600">Waybill Number</p>
+                    <p className="text-base font-semibold">
+                      {shipmentDetails?.tracking_number || selectedShipment.trackingNumber || '—'}
+                    </p>
+                  </div>
 
                   {/* Status */}
                   <label className="text-sm mb-1 text-gray-600">New Status</label>
@@ -739,10 +734,12 @@ export default function AdminDashboard() {
 
                   {newImagePreview && (
                     <div className="mt-3">
-                      <img
+                      <Image
                         src={newImagePreview}
                         alt="Preview"
-                        className="max-h-40 rounded border"
+                        width={640}
+                        height={480}
+                        className="max-h-40 rounded border w-auto h-auto"
                       />
                     </div>
                   )}

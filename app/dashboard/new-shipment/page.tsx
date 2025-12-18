@@ -50,6 +50,7 @@ export default function NewShipmentPage() {
   };
 
   const isFormValid =
+    formData.waybillNumber &&
     formData.senderName &&
     formData.receiverName &&
     formData.itemsDescription &&
@@ -112,6 +113,7 @@ export default function NewShipmentPage() {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
+          waybillNumber: formData.waybillNumber,
           senderName: formData.senderName,
           receiverName: formData.receiverName,
           itemsDescription: formData.itemsDescription,
@@ -187,22 +189,24 @@ export default function NewShipmentPage() {
                     value={formData[field]}
                     onChange={handleInputChange}
                     placeholder="e.g. John Doe"
-                    className="w-full h-[48px] px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-200"
+                    className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
                   />
                 </div>
               ))}
             </div>
 
             {/* Waybill & Description */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-[13px] font-medium mb-2">
                   Waybill Number
                 </label>
                 <input
-                  disabled
-                  placeholder="Generated"
-                  className="w-full h-[48px] px-4 text-[14px] bg-gray-100 border border-gray-300 rounded-md text-gray-500"
+                  name="waybillNumber"
+                  value={formData.waybillNumber}
+                  onChange={handleInputChange}
+                  placeholder="e.g. Way-251212-984470"
+                  className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
                 />
               </div>
 
@@ -218,10 +222,9 @@ export default function NewShipmentPage() {
                   className="w-full px-4 py-3 text-[14px] border border-gray-300 rounded-md resize-none"
                 />
               </div>
-            </div>
 
             {/* Weight */}
-            <div className="mb-6 w-[240px]">
+            <div className="mb-6 w-60 -mt-14">
               <label className="block text-[13px] font-medium mb-2">
                 Weight
               </label>
@@ -229,8 +232,9 @@ export default function NewShipmentPage() {
                 name="weight"
                 value={formData.weight}
                 onChange={handleInputChange}
-                className="w-full h-[48px] px-4 border border-gray-300 rounded-md"
+                className="w-full h-12 px-4 border border-gray-300 rounded-md"
               />
+            </div>
             </div>
 
             {/* Image Upload */}
@@ -257,19 +261,20 @@ export default function NewShipmentPage() {
 
             {/* Locations */}
             <div className="grid grid-cols-2 gap-4 mb-8">
+             
               <input
                 name="originLocation"
                 placeholder="Origin Location"
                 value={formData.originLocation}
                 onChange={handleInputChange}
-                className="h-[48px] px-4 border border-gray-300 rounded-md"
+                className="h-12 px-4 border border-gray-300 rounded-md"
               />
               <input
                 name="destination"
                 placeholder="Receiver's Location"
                 value={formData.destination}
                 onChange={handleInputChange}
-                className="h-[48px] px-4 border border-gray-300 rounded-md"
+                className="h-12 px-4 border border-gray-300 rounded-md"
               />
             </div>
 
@@ -284,7 +289,7 @@ export default function NewShipmentPage() {
             <button
               onClick={handleCreateShipment}
               disabled={!isFormValid || isLoading}
-              className={`w-full h-[56px] rounded-xl cursor-pointer font-semibold text-[15px] transition ${
+              className={`w-full h-14 rounded-xl cursor-pointer font-semibold text-[15px] transition ${
                 isFormValid
                   ? 'bg-[#2c2b2a] text-white hover:bg-[#4b4a48]' //
                   : 'bg-[#D1D5DB] text-gray-500 cursor-not-allowed'

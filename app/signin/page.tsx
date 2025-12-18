@@ -141,7 +141,7 @@ export default function SignInPage() {
 
               <div className="relative">
                 <svg
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-800 w-5 h-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -155,12 +155,12 @@ export default function SignInPage() {
                 </svg>
 
                 <input
-                  className={`w-full pl-11 pr-4 h-[44px] text-[14px] bg-white border rounded-[10px] transition-all focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                  className={`w-full pl-11 pr-4 h-[44px] text-[14px] bg-white border rounded-[10px] transition-all focus:ring-2 focus:ring-[#3B3E56] focus:border-transparent ${
                     errors.email
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300"
                   }`}
-                  placeholder="olivia@untitledui.com"
+                  placeholder="olivia@untitled.com"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
@@ -180,7 +180,7 @@ export default function SignInPage() {
 
               <div className="relative">
                 <svg
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-800 w-5 h-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -194,7 +194,7 @@ export default function SignInPage() {
                 </svg>
 
                 <input
-                  className={`w-full pl-11 pr-12 h-[44px] text-[14px] border rounded-[10px] transition-all focus:ring-2 focus:ring-orange-500 ${
+                  className={`w-full pl-11 pr-12 h-[44px] text-[14px] border rounded-[10px] transition-all focus:ring-2 focus:ring-[#3B3E56] ${
                     errors.password
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300"
@@ -253,7 +253,7 @@ export default function SignInPage() {
                 <div
                   className={`w-4 h-4 border-2 rounded-full ${
                     rememberMe
-                      ? "bg-orange-500 border-orange-500"
+                      ? "bg-[#3B3E56] border-[#3B3E56]"
                       : "border-gray-300"
                   } relative`}
                 >
@@ -280,7 +280,7 @@ export default function SignInPage() {
 
               <Link
                 href="/forgot-password"
-                className="text-[13px] font-medium text-orange-500 hover:text-orange-800 cursor-pointer"
+                className="text-[13px] font-medium text-[#3B3E56] hover:text-orange-800 cursor-pointer"
               >
                 Forgot Password?
               </Link>
@@ -290,7 +290,7 @@ export default function SignInPage() {
             <button
               type="submit"
               onClick={handleSubmit}
-              className="w-full h-[50px] bg-linear-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-[10px] shadow-sm hover:shadow-md transition-all"
+              className="w-full h-[50px] bg-linear-to-r from-[#3B3E56] to-[#14151c] hover:from-[#14151c] hover:to-[#3B3E56] text-white font-semibold rounded-[10px] shadow-sm hover:shadow-md transition-all"
             >
               {isLoading ? "Signing In..." : "Sign In"}
             </button>
@@ -347,7 +347,7 @@ export default function SignInPage() {
             Don’t have an account?{" "}
             <Link
               href="/signup"
-              className="text-orange-500 font-semibold hover:text-orange-600 cursor-pointer"
+              className="text-[#3B3E56] font-semibold hover:text-[#14151c] cursor-pointer"
             >
               Sign Up
             </Link>
