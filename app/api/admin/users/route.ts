@@ -2,6 +2,7 @@
 // Admin Users API - GET /api/admin/users
 
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createSbAdmin } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -57,6 +58,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
     }
 
+    // Prepare service role client for auth.admin calls (to read last_sign_in_at)
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!serviceRoleKey || !supabaseUrl) {
+      return NextResponse.json(
+        { error: 'Server misconfiguration: missing Supabase URL or Service Role Key' },
+        { status: 500 }
+      );
+    }
+    const supabaseAdmin = createSbAdmin(supabaseUrl, serviceRoleKey);
+
     // Get shipment counts for each user
     const userIds = usersData?.map(u => u.id) || [];
     const { data: shipmentCounts } = await supabase
@@ -69,13 +81,26 @@ export async function GET(request: NextRequest) {
       return acc;
     }, {} as Record<string, number>);
 
+    // Fetch last sign in from Supabase Auth for the returned users
+    const authUsers = await Promise.all(
+      (usersData || []).map(async (u) => {
+        try {
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(u.id);
+          return { id: u.id, lastSignInAt: authUser?.user?.last_sign_in_at || null } as const;
+        } catch {
+          return { id: u.id, lastSignInAt: null } as const;
+        }
+      })
+    );
+    const lastSignInMap = new Map(authUsers.map((u) => [u.id, u.lastSignInAt]));
+
     const users = (usersData || []).map(user => ({
       id: user.id,
       email: user.email,
       fullName: user.full_name,
       role: user.role,
       createdAt: user.created_at,
-      lastSignIn: user.last_sign_in_at,
+      lastSignIn: lastSignInMap.get(user.id) ?? user.last_sign_in_at ?? null,
       shipmentCount: shipmentCountMap[user.id] || 0,
     }));
 

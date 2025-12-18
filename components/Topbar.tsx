@@ -52,12 +52,12 @@ const Topbar = () => {
           <span className="text-xs text-[#94A3B8]">{userEmail || 'cryspryms Pro'}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Link
+          {/* <Link
             href="/dashboard"
             className="px-4 py-2 bg-black hover:bg-[#111827] text-white rounded-md text-sm font-medium transition-colors cursor-pointer"
           >
-            Back to User Panel
-          </Link>
+            Back to Dashboard
+          </Link> */}
           <button
             onClick={handleLogout}
             className="px-4 py-2 bg-black hover:bg-[#111827] text-white rounded-md text-sm font-medium transition-colors cursor-pointer"
