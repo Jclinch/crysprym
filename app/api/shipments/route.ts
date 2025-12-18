@@ -5,21 +5,51 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const supabase = createClient(
+// Server-side Supabase client
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+  {
+    auth: {
+      persistSession: false,
+    },
+  }
 );
 
-function getUserIdFromAuth(request: NextRequest): string | null {
-  const cookieStore = request.cookies;
-  const authToken = cookieStore.get('auth_token')?.value;
-
-  if (!authToken) return null;
-
+async function getUserIdFromAuth(request: NextRequest): Promise<string | null> {
   try {
-    const decoded = JSON.parse(Buffer.from(authToken, 'base64').toString());
-    return decoded.userId;
-  } catch {
+    // Get the session from the Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No Authorization header');
+      return null;
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Create a Supabase client with the user's token
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      console.error('Auth error:', error);
+      return null;
+    }
+
+    return user.id;
+  } catch (error) {
+    console.error('Get user error:', error);
     return null;
   }
 }
@@ -27,16 +57,31 @@ function getUserIdFromAuth(request: NextRequest): string | null {
 // Get shipments
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserIdFromAuth(request);
+    const userId = await getUserIdFromAuth(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Use a Supabase client authorized with the user's token to satisfy RLS
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '') || '';
+    const supabaseDb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || 'all';
 
-    let query = supabase
+    let query = supabaseDb
       .from('shipments')
       .select('*')
       .eq('user_id', userId)
@@ -74,46 +119,48 @@ export async function GET(request: NextRequest) {
 // Create shipment
 export async function POST(request: NextRequest) {
   try {
-    const userId = getUserIdFromAuth(request);
+    const userId = await getUserIdFromAuth(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
 
-    // Generate tracking number
-    const trackingNumber = `SHP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Use a Supabase client authorized with the user's token to satisfy RLS
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '') || '';
+    const supabaseDb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
 
-    const { data, error } = await supabase
+    // Set tracking number to 'not-assigned' if not provided (admin will set it later)
+    const trackingNumber = body.waybillNumber && body.waybillNumber.trim() ? body.waybillNumber : 'not-assigned';
+
+    const { data, error } = await supabaseDb
       .from('shipments')
       .insert([
         {
           user_id: userId,
           tracking_number: trackingNumber,
-          pickup_location: body.pickupLocation,
-          pickup_address: body.pickupAddress,
-          pickup_city: body.pickupCity,
-          pickup_postal_code: body.pickupPostalCode,
-          delivery_location: body.deliveryLocation,
-          delivery_address: body.deliveryAddress,
-          delivery_city: body.deliveryCity,
-          delivery_postal_code: body.deliveryPostalCode,
-          shipment_type: body.shipmentType,
-          weight_kg: body.weightKg,
-          length_cm: body.lengthCm,
-          width_cm: body.widthCm,
-          height_cm: body.heightCm,
-          contents_description: body.contentsDescription,
-          insurance_required: body.insuranceRequired,
-          insurance_amount: body.insuranceAmount,
-          signature_required: body.signatureRequired,
-          special_handling: body.specialHandling,
-          reference_number: body.referenceNumber,
-          special_instructions: body.specialInstructions,
-          status: 'confirmed',
-          estimated_delivery_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0],
+          sender_name: body.senderName,
+          receiver_name: body.receiverName,
+          items_description: body.itemsDescription,
+          weight: body.weight,
+          origin_location: body.originLocation,
+          destination: body.destination,
+          package_image_bucket: body.packageImageBucket,
+          package_image_path: body.packageImagePath,
+          package_image_url: body.packageImageUrl,
+          status: 'created',
+          progress_step: 'pending',
         },
       ])
       .select()
@@ -122,27 +169,27 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Database error:', error);
       return NextResponse.json(
-        { error: 'Failed to create shipment' },
+        { error: `Failed to create shipment: ${error.message}` },
         { status: 500 }
       );
     }
 
-    // Create initial tracking event
-    await supabase.from('tracking_events').insert([
+    // Create initial shipment event
+    await supabaseDb.from('shipment_events').insert([
       {
         shipment_id: data.id,
-        event_type: 'pickup_scheduled',
-        description: 'Shipment created and ready for pickup',
-        status: 'pending',
-        event_timestamp: new Date().toISOString(),
+        event_type: 'shipment_created',
+        description: 'Shipment created and pending pickup',
+        created_by: userId,
       },
     ]);
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Create shipment error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${errorMessage}` },
       { status: 500 }
     );
   }

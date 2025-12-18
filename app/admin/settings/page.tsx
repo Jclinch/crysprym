@@ -10,8 +10,8 @@ import { Input } from '@/components/Input';
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState({
-    companyName: 'Logistics Pro',
-    supportEmail: 'support@logisticspro.com',
+    companyName: 'cryspryms Pro',
+    supportEmail: 'support@crysprymspro.com',
     defaultDeliveryDays: 5,
     maxShipmentWeight: 50,
     enableNotifications: true,

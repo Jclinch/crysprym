@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
           id: authData.user.id,
           email: authData.user.email,
           full_name: fullName,
-          role: authData.user.email === 'admin@logistics.com' ? 'admin' : 'user', // Make admin@logistics.com an admin by default
+          role: authData.user.email === 'admin@cryspryms.com' ? 'admin' : 'user', // Make admin@cryspryms.com an admin by default
         },
       ]);
 

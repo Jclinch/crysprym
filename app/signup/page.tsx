@@ -115,7 +115,7 @@ export default function SignUpPage() {
               Create an account
             </h1>
             <p className="text-[14px] text-gray-500 leading-relaxed">
-              Let’s get you started with premium logistics access
+              Let’s get you started with premium cryspryms access
             </p>
           </div>
 
@@ -225,7 +225,7 @@ export default function SignUpPage() {
 
                 <button
                   type="button"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   <svg
@@ -280,7 +280,7 @@ export default function SignUpPage() {
 
                 <button
                   type="button"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   <svg
@@ -353,7 +353,7 @@ export default function SignUpPage() {
           <div className="space-y-3">
             <button
               onClick={handleGoogle}
-              className="w-full h-[44px] flex items-center justify-center gap-3 border border-gray-300 rounded-[10px] hover:bg-gray-50 transition-all"
+              className="w-full h-[44px] flex items-center justify-center gap-3 border border-gray-300 rounded-[10px] hover:bg-gray-50 transition-all cursor-pointer"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -368,7 +368,7 @@ export default function SignUpPage() {
 
             <button
               onClick={handleApple}
-              className="w-full h-[44px] flex items-center justify-center gap-3 bg-black rounded-[10px] hover:bg-gray-900 transition-all"
+              className="w-full h-[44px] flex items-center justify-center gap-3 bg-black rounded-[10px] hover:bg-gray-900 transition-all cursor-pointer"
             >
               <Image src="/apple.png" alt="apple" width={20} height={20} />
               <span className="text-[14px] text-white font-medium">
@@ -380,7 +380,7 @@ export default function SignUpPage() {
           {/* SIGN IN LINK */}
           <p className="mt-8 text-center text-[14px] text-gray-600">
             Already have an account?{" "}
-            <Link href="/signin" className="text-orange-500 font-semibold hover:text-orange-600">
+            <Link href="/signin" className="text-orange-500 font-semibold hover:text-orange-600 cursor-pointer">
               Sign In
             </Link>
           </p>

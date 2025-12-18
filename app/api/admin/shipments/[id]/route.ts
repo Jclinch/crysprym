@@ -2,6 +2,7 @@
 // Admin Shipment Update API - PATCH /api/admin/shipments/[id]
 
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createSbAdmin } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -29,7 +30,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { status: progressStep, location } = await request.json();
+    const { status: progressStep, location, waybillNumber, packageImageBucket, packageImagePath, packageImageUrl } = await request.json();
 
     if (!progressStep) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
@@ -63,15 +64,41 @@ export async function PATCH(
       updateData.destination = location.trim();
     }
 
+    // Include tracking number (waybill) if provided
+    if (waybillNumber && waybillNumber.trim() && waybillNumber !== 'not-assigned') {
+      updateData.tracking_number = waybillNumber.trim();
+    }
+
+    // Include image fields if provided
+    if (packageImageBucket && packageImagePath && packageImageUrl) {
+      updateData.package_image_bucket = packageImageBucket;
+      updateData.package_image_path = packageImagePath;
+      updateData.package_image_url = packageImageUrl;
+    }
+
+    // Use service role for updating any shipment (bypass RLS after admin check)
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!serviceRoleKey || !supabaseUrl) {
+      return NextResponse.json(
+        { error: 'Server misconfiguration: missing Supabase URL or Service Role Key' },
+        { status: 500 }
+      );
+    }
+    const supabaseAdmin = createSbAdmin(supabaseUrl, serviceRoleKey);
+
     // Update shipment
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('shipments')
       .update(updateData)
       .eq('id', id);
 
     if (updateError) {
       console.error('Error updating shipment:', updateError);
-      return NextResponse.json({ error: 'Failed to update shipment' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to update shipment', details: updateError.message },
+        { status: 500 }
+      );
     }
 
     // Create shipment event for status change
@@ -79,7 +106,7 @@ export async function PATCH(
       ? `Status changed to ${progressStep.replace(/_/g, ' ')} - Location: ${location.trim()}`
       : `Status changed to ${progressStep.replace(/_/g, ' ')}`;
     
-    const { error: eventError } = await supabase
+    const { error: eventError } = await supabaseAdmin
       .from('shipment_events')
       .insert({
         shipment_id: id,

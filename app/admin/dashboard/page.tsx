@@ -84,6 +84,10 @@ export default function AdminDashboard() {
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [newLocation, setNewLocation] = useState('');
+  const [newWaybill, setNewWaybill] = useState('');
+  const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [newImagePreview, setNewImagePreview] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
   const supabase = createClient();
@@ -259,6 +263,7 @@ export default function AdminDashboard() {
   const openModal = async (shipment: NormalizedShipment) => {
     setSelectedShipment(shipment);
     setNewStatus(shipment.progressStep);
+    setNewWaybill(shipment.trackingNumber);
     setIsModalOpen(true);
     setIsModalLoading(true);
     
@@ -279,6 +284,7 @@ export default function AdminDashboard() {
            data.status === 'delivered' ? 'delivered' : 
            data.status === 'in_transit' ? 'in_transit' : 'pending');
         setNewStatus(progressStep);
+        setNewWaybill(data.tracking_number || shipment.trackingNumber);
       }
     } catch (e) {
       console.error('Failed to fetch shipment details:', e);
@@ -293,6 +299,10 @@ export default function AdminDashboard() {
     setShipmentDetails(null);
     setNewStatus('');
     setNewLocation('');
+    setNewWaybill('');
+    setNewImageFile(null);
+    setNewImagePreview('');
+    setUploadingImage(false);
   };
 
   const handleUpdateStatus = async () => {
@@ -300,10 +310,45 @@ export default function AdminDashboard() {
     
     setIsUpdating(true);
     try {
+      let packageImageBucket = '';
+      let packageImagePath = '';
+      let packageImageUrl = '';
+
+      // If admin picked an image, upload to Supabase Storage first
+      if (newImageFile) {
+        try {
+          setUploadingImage(true);
+          const fileName = `${selectedShipment.id}-${Date.now()}-${newImageFile.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('package-images')
+            .upload(fileName, newImageFile, { upsert: true });
+
+          if (uploadError) {
+            console.error('Image upload error:', uploadError);
+          } else if (uploadData) {
+            packageImageBucket = 'package-images';
+            packageImagePath = uploadData.path;
+            const { data: pub } = supabase.storage
+              .from('package-images')
+              .getPublicUrl(uploadData.path);
+            packageImageUrl = pub?.publicUrl || '';
+          }
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
       const res = await fetch(`/api/admin/shipments/${selectedShipment.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, location: newLocation }),
+        body: JSON.stringify({ 
+          status: newStatus, 
+          location: newLocation,
+          waybillNumber: newWaybill,
+          packageImageBucket,
+          packageImagePath,
+          packageImageUrl,
+        }),
       });
       
       if (res.ok) {
@@ -315,6 +360,7 @@ export default function AdminDashboard() {
                   ...s, 
                   status: newStatus, 
                   progressStep: newStatus,
+                  trackingNumber: newWaybill || s.trackingNumber,
                   destination: newLocation.trim() || s.destination
                 } 
               : s
@@ -323,11 +369,11 @@ export default function AdminDashboard() {
         closeModal();
       } else {
         const err = await res.json();
-        alert(err.error || 'Failed to update status');
+        alert(err.error || 'Failed to update shipment');
       }
     } catch (e) {
       console.error('Failed to update shipment:', e);
-      alert('Failed to update status');
+      alert('Failed to update shipment');
     } finally {
       setIsUpdating(false);
     }
@@ -424,7 +470,7 @@ export default function AdminDashboard() {
 
           <div className="flex items-center gap-3">
             <div className="relative">
-              <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-[#E6EEF5] bg-white text-sm shadow-sm">
+              <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-[#E6EEF5] bg-white text-sm shadow-sm cursor-pointer">
               
               </button>
             </div>
@@ -437,7 +483,7 @@ export default function AdminDashboard() {
               <Input
                 id="admin-search"
                 type="text"
-                placeholder="Search by Tracking ID, address, or description"
+                placeholder="Search by Waybill Number, address, or description"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -469,7 +515,7 @@ export default function AdminDashboard() {
         {/* Table */}
         <div className="overflow-hidden rounded-md border border-[#EEF2F6]">
           <div className="bg-[#EFEFEF] text-gray-950 grid grid-cols-6 gap-4 items-center px-6 py-4 text-sm font-medium">
-            <div>Tracking ID</div>
+            <div>Waybill Number</div>
             <div>Destination</div>
             <div>Description</div>
             <div>Status</div>
@@ -554,7 +600,7 @@ export default function AdminDashboard() {
 
                   {/* Tracking */}
                   <div className="mb-4">
-                    <p className="text-sm text-gray-500">Tracking ID</p>
+                    <p className="text-sm text-gray-500">Waybill Number</p>
                     <p className="text-base font-semibold">
                       {shipmentDetails?.tracking_number || selectedShipment.trackingNumber || '—'}
                     </p>
@@ -632,8 +678,17 @@ export default function AdminDashboard() {
                 {/* RIGHT — Update Status */}
                 <div className="border border-[#E5E7EB] rounded-xl p-6 flex flex-col">
                   <h3 className="text-lg font-semibold text-[#1F2937] mb-6">
-                    Update Status
+                    Update Shipment
                   </h3>
+
+                  {/* Waybill Number */}
+                  <label className="text-sm mb-1 text-gray-600">Waybill Number</label>
+                  <Input
+                    placeholder="e.g. WAY-001"
+                    value={newWaybill}
+                    onChange={(e) => setNewWaybill(e.target.value)}
+                    className="mb-4"
+                  />
 
                   {/* Status */}
                   <label className="text-sm mb-1 text-gray-600">New Status</label>
@@ -660,21 +715,46 @@ export default function AdminDashboard() {
                     className="mb-4"
                   />
 
-                  {/* Upload - commented out for later use
-                  <label className="text-sm mb-2 text-gray-600">Add Image</label>
-                  <div className="flex-1 min-h-[120px] border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-sm text-gray-400 cursor-pointer hover:border-gray-400 transition-colors">
+                  {/* Upload / Replace Image */}
+                  <label className="text-sm mb-2 text-gray-600">Add/Replace Image</label>
+                  <label className="flex-1 min-h-[120px] border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-sm text-gray-600 cursor-pointer hover:border-gray-400 transition-colors">
                     <Package className="w-8 h-8 mb-2" />
-                    <span>Browse and choose the files to upload</span>
-                  </div>
-                  */}
+                    <span>{newImageFile ? 'Image selected — will upload on update' : 'Browse and choose the file to upload'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        if (!file) return;
+                        if (file.size > 1024 * 1024) { // 1MB limit
+                          alert('Image must be under 1MB');
+                          return;
+                        }
+                        setNewImageFile(file);
+                        setNewImagePreview(URL.createObjectURL(file));
+                      }}
+                    />
+                  </label>
+
+                  {newImagePreview && (
+                    <div className="mt-3">
+                      <img
+                        src={newImagePreview}
+                        alt="Preview"
+                        className="max-h-40 rounded border"
+                      />
+                    </div>
+                  )}
+                 
 
                   {/* Button */}
                   <Button
                     onClick={handleUpdateStatus}
-                    disabled={isUpdating || (newStatus === (shipmentDetails?.progress_step || selectedShipment.progressStep))}
+                    disabled={isUpdating || uploadingImage || (newStatus === (shipmentDetails?.progress_step || selectedShipment.progressStep))}
                     className="mt-6 w-full h-12 bg-black text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUpdating ? 'Updating...' : 'Update Status'}
+                    {isUpdating || uploadingImage ? 'Updating...' : 'Update Shipment'}
                   </Button>
                 </div>
               </div>

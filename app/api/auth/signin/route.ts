@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // If user profile row doesn't exist yet, rely on DB trigger to create it.
     // Redirect based on email as a temporary fallback; middleware will enforce role-based access.
     if (!user) {
-      const fallbackIsAdmin = ['admin@logistics.com', 'officialsunnyugwu@gmail.com'].includes(authData.user.email!);
+      const fallbackIsAdmin = ['admin@cryspryms.com', 'officialsunnyugwu@gmail.com'].includes(authData.user.email!);
       const redirectUrl = fallbackIsAdmin ? '/admin/dashboard' : '/dashboard';
       const redirectResponse = NextResponse.redirect(new URL(redirectUrl, request.url));
       response.cookies.getAll().forEach((cookie) => {

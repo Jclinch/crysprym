@@ -108,7 +108,7 @@ export default function SignInPage() {
           <div className="-ml-9">
             <Image
               src="/logo.png"
-              alt="Logistics Pro Logo"
+              alt="cryspryms Pro Logo"
               width={160}
               height={160}
             />
@@ -208,7 +208,7 @@ export default function SignInPage() {
 
                 <button
                   type="button"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   <svg
@@ -280,7 +280,7 @@ export default function SignInPage() {
 
               <Link
                 href="/forgot-password"
-                className="text-[13px] font-medium text-orange-500 hover:text-orange-800"
+                className="text-[13px] font-medium text-orange-500 hover:text-orange-800 cursor-pointer"
               >
                 Forgot Password?
               </Link>
@@ -310,7 +310,7 @@ export default function SignInPage() {
             {/* GOOGLE */}
             <button
               onClick={handleGoogle}
-              className="w-full h-[44px] flex items-center justify-center gap-3 border border-gray-300 rounded-[10px] hover:bg-gray-50 transition-all"
+              className="w-full h-[44px] flex items-center justify-center gap-3 border border-gray-300 rounded-[10px] hover:bg-gray-50 transition-all cursor-pointer"
             >
               <Image
                 src="/google.png"
@@ -327,7 +327,7 @@ export default function SignInPage() {
             {/* APPLE */}
             <button
               onClick={handleApple}
-              className="w-full h-[44px] flex items-center justify-center gap-3 rounded-[10px] bg-black hover:bg-gray-900 transition-all"
+              className="w-full h-[44px] flex items-center justify-center gap-3 rounded-[10px] bg-black hover:bg-gray-900 transition-all cursor-pointer"
             >
               <Image
                 src="/apple.png"
@@ -347,7 +347,7 @@ export default function SignInPage() {
             Don’t have an account?{" "}
             <Link
               href="/signup"
-              className="text-orange-500 font-semibold hover:text-orange-600"
+              className="text-orange-500 font-semibold hover:text-orange-600 cursor-pointer"
             >
               Sign Up
             </Link>

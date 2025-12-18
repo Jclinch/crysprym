@@ -3,9 +3,10 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Button } from './Button';
+import { LogOut } from 'lucide-react';
+import Image from 'next/image';
 
 interface HeaderProps {
   title?: string;
@@ -14,12 +15,12 @@ interface HeaderProps {
 
 export function Header({ title = 'Dashboard', onLogout }: HeaderProps) {
   const [displayName, setDisplayName] = useState('');
-  const supabase = createClient();
+  const supabaseClient = createClient();
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
         if (user && !error) {
           // Extract username from email (part before @) and capitalize first letter
           const userEmail = user.email || '';
@@ -38,10 +39,25 @@ export function Header({ title = 'Dashboard', onLogout }: HeaderProps) {
     };
 
     fetchUser();
-  }, [supabase]);
+  }, [supabaseClient]);
+
+  const handleLogout = async () => {
+    await supabaseClient.auth.signOut();
+    onLogout?.();
+  };
   return (
     <header className="bg-white border-b border-[#E2E8F0] h-auto px-6 py-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
+        {/* Logo */}
+        <div className="mt-1.5 flex justify-center">
+          <Image
+            src="/logo.png"
+            alt="Bold Reach"
+            width={90}
+            height={90}
+            className="object-contain"
+          />
+        </div>
         <div>
           <h1 className="text-2xl font-bold text-[#1E293B]">{title}</h1>
           {displayName && (
@@ -49,10 +65,14 @@ export function Header({ title = 'Dashboard', onLogout }: HeaderProps) {
           )}
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        
-      
-      </div>
+      {/* Sign Out */}
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-sm font-medium text-red-500 hover:text-red-600 transition"
+      >
+        <LogOut size={18} />
+        Sign Out
+      </button>
     </header>
   );
 }

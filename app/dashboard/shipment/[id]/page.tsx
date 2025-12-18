@@ -171,7 +171,7 @@ export default function ShipmentDetailPage() {
           <p className="text-[#EF4444] font-semibold mb-4">Shipment not found</p>
           <button
             onClick={() => router.push('/dashboard/history')}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#F97316] hover:bg-[#ea690c] rounded-md"
+            className="px-4 py-2 text-sm font-medium text-white bg-[#F97316] hover:bg-[#ea690c] rounded-md cursor-pointer"
           >
             Back to History
           </button>
@@ -191,7 +191,7 @@ export default function ShipmentDetailPage() {
           </div>
           <button
             onClick={() => router.push('/dashboard/history')}
-            className="px-4 py-2 text-sm font-medium text-[#64748B] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors"
+            className="px-4 py-2 text-sm font-medium text-[#64748B] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors cursor-pointer"
           >
             Back to History
           </button>
@@ -329,7 +329,7 @@ export default function ShipmentDetailPage() {
             <button
               onClick={handleUpdateStatus}
               disabled={isSaving}
-              className="px-6 py-2.5 text-sm font-medium text-white bg-[#F97316] hover:bg-[#ea690c] disabled:opacity-50 rounded-md transition-colors"
+              className="px-6 py-2.5 text-sm font-medium text-white bg-[#F97316] hover:bg-[#ea690c] disabled:opacity-50 rounded-md transition-colors cursor-pointer"
             >
               {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -338,7 +338,7 @@ export default function ShipmentDetailPage() {
                 setUpdatedStatus(shipment.status);
                 setUpdatedProgressStep(shipment.progress_step);
               }}
-              className="px-6 py-2.5 text-sm font-medium text-[#64748B] border border-[#E2E8F0] hover:bg-[#F8FAFC] rounded-md transition-colors"
+              className="px-6 py-2.5 text-sm font-medium text-[#64748B] border border-[#E2E8F0] hover:bg-[#F8FAFC] rounded-md transition-colors cursor-pointer"
             >
               Reset
             </button>

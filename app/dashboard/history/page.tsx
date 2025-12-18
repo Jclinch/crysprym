@@ -3,6 +3,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
@@ -11,6 +12,7 @@ import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { Tabs } from '@/components/Sidebar';
 
 interface ShipmentRow {
   id: string;
@@ -159,8 +161,17 @@ export default function HistoryPage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+  <DashboardLayout>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="max-w-full mx-auto"
+      >
+        <div className=" bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <Tabs />      
+          <div className="p-8">
+        
         <div>
           <h1 className="text-3xl font-bold text-[#1E293B] mb-2">Logistics History</h1>
           <p className="text-[#475569]">View and manage all your shipments</p>
@@ -177,7 +188,7 @@ export default function HistoryPage() {
                 <Input
                   id="search"
                   type="text"
-                  placeholder="Search by tracking ID, address, or description"
+                  placeholder="Search by Waybill Number, address, or description"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -236,7 +247,7 @@ export default function HistoryPage() {
             {/* Table header */}
             <div className="overflow-hidden rounded-md shadow-sm">
               <div className="bg-[#0F2940] text-white grid grid-cols-5 gap-4 items-center px-6 py-4 text-sm font-medium">
-                <div>Tracking ID</div>
+                <div>Waybill Number</div>
                 <div>Destination</div>
                 <div>Description</div>
                 <div>Status</div>
@@ -266,6 +277,8 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
+      </div>
+      </motion.div>
     </DashboardLayout>
   );
 }

@@ -25,20 +25,20 @@ export async function GET(
     const trackingNumber = rawTrackingNumber?.trim() || '';
 
     if (!trackingNumber) {
-      console.error('No tracking number provided');
+      console.error('No Waybill number provided');
       return NextResponse.json(
-        { error: 'Tracking number is required' },
+        { error: 'Waybill number is required' },
         { status: 400 }
       );
     }
 
-    console.log('Searching for shipment with tracking number:', trackingNumber);
+    console.log('Searching for shipment with Waybill number:', trackingNumber);
 
-    // Query using the view for optimized data retrieval
+    // Query using the view for optimized data retrieval (exact match on assigned waybill)
     const { data: shipment, error: shipmentError } = await supabase
       .from('v_shipments_with_latest_event')
       .select('*')
-      .ilike('tracking_number', trackingNumber)
+      .eq('tracking_number', trackingNumber)
       .maybeSingle();
 
     if (shipmentError) {
@@ -147,6 +147,7 @@ export async function GET(
         progressStep: progressStep,
         progressIndex: progressIndex,
         createdAt: shipment.created_at,
+        updatedAt: shipment.updated_at,
       },
       estimatedDeliveryDate: estimatedDate.toISOString(),
       events: transformedEvents,
