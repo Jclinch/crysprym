@@ -121,7 +121,7 @@ return (
                       </svg>
                     </span>
                     <input
-                      className="w-full pl-11 pr-4 h-11 text-sm border border-[#E6E7EB] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B2C]"
+                      className="w-full pl-11 pr-4 h-11 text-sm border border-[#E6E7EB] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2e2622]"
                       placeholder="BR-251212-984470"
                       value={trackingNumber}
                       onChange={(e) => setTrackingNumber(e.target.value)}

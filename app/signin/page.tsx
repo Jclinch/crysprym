@@ -296,51 +296,7 @@ export default function SignInPage() {
             </button>
           </div>
 
-          {/* DIVIDER (pixel perfect) */}
-          <div className="flex items-center my-6">
-            <div className="flex-1 h-[1px] bg-gray-200" />
-            <span className="px-4 text-[13px] text-gray-500 font-medium">
-              Or Sign Up with
-            </span>
-            <div className="flex-1 h-[1px] bg-gray-200" />
-          </div>
-
-          {/* SOCIAL BUTTONS */}
-          <div className="space-y-3">
-            {/* GOOGLE */}
-            <button
-              onClick={handleGoogle}
-              className="w-full h-[44px] flex items-center justify-center gap-3 border border-gray-300 rounded-[10px] hover:bg-gray-50 transition-all cursor-pointer"
-            >
-              <Image
-                src="/google.png"
-                alt="google icon"
-                width={5}
-                height={5}
-                className="w-5 h-5"
-              />
-              <span className="text-[14px] text-gray-700 font-medium">
-                Sign in with Google
-              </span>
-            </button>
-
-            {/* APPLE */}
-            <button
-              onClick={handleApple}
-              className="w-full h-[44px] flex items-center justify-center gap-3 rounded-[10px] bg-black hover:bg-gray-900 transition-all cursor-pointer"
-            >
-              <Image
-                src="/apple.png"
-                alt="apple icon"
-                width={5}
-                height={5}
-                className="w-5 h-5"
-              />
-              <span className="text-[14px] text-white font-medium">
-                Sign in with Apple
-              </span>
-            </button>
-          </div>
+         
 
           {/* SIGN UP LINK */}
           <p className="mt-8 text-center text-[14px] text-gray-600">
