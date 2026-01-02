@@ -9,9 +9,7 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { createClient } from '@/utils/supabase/client';
-import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { Tabs } from '@/components/Sidebar';
 import { downloadCsv, toCsv } from '@/utils/csv';
 
@@ -34,7 +32,6 @@ interface ShipmentRow {
 
 export default function HistoryPage() {
   const supabase = createClient();
-  const router = useRouter();
   const [shipments, setShipments] = useState<ShipmentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,7 +60,8 @@ export default function HistoryPage() {
 
         // Apply status filter
         if (filterStatus !== 'all') {
-          query = query.eq('status', filterStatus);
+          const dbStatus = filterStatus === 'pending' ? 'created' : filterStatus;
+          query = query.eq('status', dbStatus);
         }
 
         // Execute query
@@ -133,21 +131,6 @@ export default function HistoryPage() {
       .replace(/_/g, ' ')
       .replace(/-/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase());
-  };
-
-  const formatDateTime = (dt?: string) => {
-    if (!dt) return '';
-    try {
-      return new Date(dt).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dt;
-    }
   };
 
   const formatDateOnly = (value?: string) => {
