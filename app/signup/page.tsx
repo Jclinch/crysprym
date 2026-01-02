@@ -97,10 +97,10 @@ export default function SignUpPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="w-full lg:w-[50%] flex items-center justify-center py-10">
+      <div className="w-full lg:w-[50%] flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-[602px]">
           {/* LOGO */}
-          <div className="-ml-9">
+          <div className="flex justify-center sm:justify-start sm:-ml-9">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -149,7 +149,7 @@ export default function SignUpPage() {
                 <input
                   className={`w-full pl-11 pr-4 h-[44px] text-[14px] border rounded-[10px] transition-all
                     ${errors.fullName ? "border-red-300 bg-red-50" : "border-gray-300"}
-                    focus:ring-2 focus:ring-orange-500 focus:border-transparent`}
+                    focus:ring-2 focus:ring-gray-500 focus:border-transparent`}
                   placeholder="Olivia Smith"
                   name="fullName"
                   value={formData.fullName}
@@ -182,7 +182,7 @@ export default function SignUpPage() {
                 <input
                   className={`w-full pl-11 pr-4 h-[44px] text-[14px] border rounded-[10px] transition-all
                     ${errors.email ? "border-red-300 bg-red-50" : "border-gray-300"}
-                    focus:ring-2 focus:ring-orange-500 focus:border-transparent`}
+                    focus:ring-2 focus:ring-g-500 focus:border-transparent`}
                   placeholder="olivia@example.com"
                   name="email"
                   value={formData.email}
@@ -216,7 +216,7 @@ export default function SignUpPage() {
                   type={showPassword ? "text" : "password"}
                   className={`w-full pl-11 pr-12 h-[44px] text-[14px] border rounded-[10px] transition-all
                     ${errors.password ? "border-red-300 bg-red-50" : "border-gray-300"}
-                    focus:ring-2 focus:ring-orange-500`}
+                    focus:ring-2 focus:ring-g-500`}
                   placeholder="***********"
                   name="password"
                   value={formData.password}
@@ -271,7 +271,7 @@ export default function SignUpPage() {
                   type={showConfirmPassword ? "text" : "password"}
                   className={`w-full pl-11 pr-12 h-[44px] text-[14px] border rounded-[10px] transition-all
                     ${errors.confirmPassword ? "border-red-300 bg-red-50" : "border-gray-300"}
-                    focus:ring-2 focus:ring-orange-500`}
+                    focus:ring-2 focus:ring-g-500`}
                   placeholder="***********"
                   name="confirmPassword"
                   value={formData.confirmPassword}
@@ -316,7 +316,7 @@ export default function SignUpPage() {
 
               <div
                 className={`w-4 h-4 border-2 rounded-full flex items-center justify-center
-                  ${agreeToTerms ? "bg-orange-500 border-orange-500" : "border-gray-300"} `}
+                  ${agreeToTerms ? "bg-g-500 border-g-500" : "border-gray-300"} `}
               >
                 {agreeToTerms && (
                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,7 +334,7 @@ export default function SignUpPage() {
             {/* BUTTON */}
             <button
               type="submit"
-              className="w-full h-[50px] bg-linear-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-[10px] shadow-sm hover:shadow-md transition-all"
+              className="w-full h-[50px] bg-linear-to-r from-gray-500 to-gray-600 hover:from-g-600 hover:to-g-700 text-white font-semibold rounded-[10px] shadow-sm hover:shadow-md transition-all"
             >
               {isLoading ? "Creating Account..." : "Sign Up"}
             </button>
@@ -380,7 +380,7 @@ export default function SignUpPage() {
           {/* SIGN IN LINK */}
           <p className="mt-8 text-center text-[14px] text-gray-600">
             Already have an account?{" "}
-            <Link href="/signin" className="text-orange-500 font-semibold hover:text-orange-600 cursor-pointer">
+            <Link href="/signin" className="text-g-500 font-semibold hover:text-g-600 cursor-pointer">
               Sign In
             </Link>
           </p>

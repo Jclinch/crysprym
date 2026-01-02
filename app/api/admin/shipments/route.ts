@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         destination,
         items_description,
         weight,
+        shipment_date,
         created_at,
         user_id
       `, { count: 'exact' });

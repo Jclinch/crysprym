@@ -47,8 +47,8 @@ const Topbar = () => {
 
   return (
     <header className="bg-white border-b border-[#E2E8F0]"> 
-      <div className="px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <span className="text-xs text-[#94A3B8]">{userEmail || 'cryspryms Pro'}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -60,7 +60,7 @@ const Topbar = () => {
           </Link> */}
           <button
             onClick={handleLogout}
-            className="px-4 py-2 bg-black hover:bg-[#111827] text-white rounded-md text-sm font-medium transition-colors cursor-pointer"
+            className="px-4 py-2 bg-black hover:bg-[#111827] text-white rounded-md text-sm font-medium transition-colors cursor-pointer w-full sm:w-auto"
           >
             Logout
           </button>
@@ -68,13 +68,13 @@ const Topbar = () => {
       </div>
 
       {/* Top tab switch navigation */}
-      <nav className="px-6 pb-4">
-        <div className="flex items-center gap-2">
+      <nav className="px-4 sm:px-6 pb-4">
+        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
           {adminNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer
+              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer
                 ${isActive(item.href) ? 'bg-[#0F2940] text-white' : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#1E293B]'}
               `}
             >

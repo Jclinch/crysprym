@@ -23,7 +23,7 @@ export default function AdminLayout({
         <AdminHeader />
         <Topbar />
 
-        <main className="flex-1 overflow-auto p-8">{children}</main>
+        <main className="flex-1 overflow-auto p-4 sm:p-8">{children}</main>
       </div>
     </div>
   );

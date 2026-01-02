@@ -12,11 +12,14 @@ import { createClient } from '@/utils/supabase/client';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Box, Truck, Users, Crown, Filter, X, Package, ChevronDown } from 'lucide-react';
+import { LOCATIONS } from '@/lib/locations';
+import { downloadCsv, toCsv } from '@/utils/csv';
 
 interface ShipmentRow {
   id: string;
   tracking_number?: string;
   trackingNumber?: string;
+  shipment_date?: string;
   destination?: string;
   delivery_location?: string;
   items_description?: string;
@@ -40,6 +43,7 @@ interface NormalizedShipment {
   description: string;
   destination: string;
   createdAt: string;
+  shipmentDate: string;
 }
 
 interface DashboardStats {
@@ -66,6 +70,7 @@ interface ShipmentDetails {
   status: string;
   tracking_number: string | null;
   progress_step: string;
+  shipment_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -201,6 +206,7 @@ export default function AdminDashboard() {
       progressStep: displayStatus,
       senderName: (row.senderName || row.sender_name || '').toString(),
       createdAt: (row.createdAt || row.created_at || row.latest_event_time || '').toString(),
+      shipmentDate: (row.shipment_date || '').toString(),
     };
   };
 
@@ -216,6 +222,46 @@ export default function AdminDashboard() {
     } catch {
       return iso;
     }
+  };
+
+  const formatDateOnly = (value?: string) => {
+    if (!value) return '';
+    try {
+      const isPlainDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+      const d = new Date(isPlainDate ? `${value}T00:00:00` : value);
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return value;
+    }
+  };
+
+  const handleExportShipmentsCsv = () => {
+    const rows = shipments.map((s) => {
+      const shipmentDate = formatDateOnly(s.shipmentDate) || formatDateOnly(s.createdAt) || '';
+      return {
+        trackingNumber: s.trackingNumber || '—',
+        senderName: s.senderName || '—',
+        destination: s.destination || '—',
+        description: s.description || '—',
+        status: getStatusLabel(s.progressStep),
+        shipmentDate,
+      };
+    });
+
+    const csv = toCsv(rows, [
+      { key: 'trackingNumber', header: 'Waybill Number' },
+      { key: 'senderName', header: 'Sender' },
+      { key: 'destination', header: 'Destination' },
+      { key: 'description', header: 'Description' },
+      { key: 'status', header: 'Status' },
+      { key: 'shipmentDate', header: 'Shipment Date' },
+    ]);
+
+    downloadCsv(`shipment-management-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   };
 
   // Get display label for status/progress_step
@@ -458,23 +504,25 @@ export default function AdminDashboard() {
 
       {/* Shipment Management */}
       <Card id="shipments">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h2 className="text-xl font-semibold text-[#1E293B]">Shipment Management</h2>
             <p className="text-sm text-[#94A3B8]">Search and manage recent shipments</p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-[#E6EEF5] bg-white text-sm shadow-sm cursor-pointer">
-              
-              </button>
-            </div>
+            <Button
+              variant="secondary"
+              onClick={handleExportShipmentsCsv}
+              disabled={shipmentsLoading || shipments.length === 0}
+            >
+              Export CSV
+            </Button>
           </div>
         </div>
 
         <div className="mb-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1">
               <Input
                 id="admin-search"
@@ -485,7 +533,7 @@ export default function AdminDashboard() {
               />
             </div>
 
-            <div className="w-48">
+            <div className="w-full sm:w-48">
               <div className="relative">
                 {statusFilter === 'all' && (
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]">
@@ -508,14 +556,14 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-md border border-[#EEF2F6]">
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-hidden rounded-md border border-[#EEF2F6]">
           <div className="bg-[#EFEFEF] text-gray-950 grid grid-cols-6 gap-4 items-center px-6 py-4 text-sm font-medium">
             <div>Waybill Number</div>
             <div>Destination</div>
             <div>Description</div>
             <div>Status</div>
-            <div className="text-right">Date/Time</div>
+            <div className="text-right">Shipment Date</div>
             <div className="text-right">Action</div>
           </div>
 
@@ -523,43 +571,100 @@ export default function AdminDashboard() {
             {shipmentsLoading ? (
               <div className="p-8 text-center text-[#94A3B8]">Loading shipments...</div>
             ) : shipments.length > 0 ? (
-              shipments.map((shipment) => (
-                <div key={shipment.id} className="grid grid-cols-6 gap-4 items-center px-6 py-6">
-                  <div className="text-sm font-semibold text-[#0F2940]">
-                    {shipment.trackingNumber}
+              shipments.map((shipment) => {
+                const displayDate = formatDateOnly(shipment.shipmentDate) || formatDateOnly(shipment.createdAt) || '';
+                return (
+                  <div key={shipment.id} className="grid grid-cols-6 gap-4 items-center px-6 py-6">
+                    <div className="text-sm font-semibold text-[#0F2940]">
+                      {shipment.trackingNumber}
+                    </div>
+                    <div className="text-sm text-[#475569]">
+                      {shipment.destination || '—'}
+                    </div>
+                    <div className="text-sm text-[#475569]">
+                      {shipment.description || '—'}
+                    </div>
+                    <div className="text-sm mr-4">
+                      <span
+                        className="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium"
+                        style={getStatusStyle(shipment.progressStep)}
+                      >
+                        {getStatusLabel(shipment.progressStep)}
+                      </span>
+                    </div>
+                    <div className="text-right text-sm text-[#94A3B8]">
+                      {displayDate || '—'}
+                    </div>
+                    <div className="text-right">
+                      <Button
+                        variant="secondary"
+                        onClick={() => openModal(shipment)}
+                        className="px-2 ml-34 py-2 bg-black text-white hover:bg-[#29292a]"
+                      >
+                        Update
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-sm text-[#475569]">
-                    {shipment.destination || '—'}
-                  </div>
-                  <div className="text-sm text-[#475569]">
-                    {shipment.description || '—'}
-                  </div>
-                  <div className="text-sm mr-4">
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-[#94A3B8]">No shipments found</div>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-3">
+          {shipmentsLoading ? (
+            <div className="p-6 text-center text-[#94A3B8]">Loading shipments...</div>
+          ) : shipments.length > 0 ? (
+            shipments.map((shipment) => {
+              const displayDate = formatDateOnly(shipment.shipmentDate) || formatDateOnly(shipment.createdAt) || '';
+              return (
+                <div key={shipment.id} className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm text-[#94A3B8]">Waybill Number</div>
+                      <div className="text-base font-semibold text-[#0F2940]">{shipment.trackingNumber || '—'}</div>
+                    </div>
                     <span
-                      className="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium"
+                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
                       style={getStatusStyle(shipment.progressStep)}
                     >
                       {getStatusLabel(shipment.progressStep)}
                     </span>
                   </div>
-                  <div className="text-right text-sm text-[#94A3B8]">
-                    {formatDate(shipment.createdAt)}
+
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+                    <div>
+                      <div className="text-[#94A3B8]">Destination</div>
+                      <div className="text-[#475569]">{shipment.destination || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[#94A3B8]">Description</div>
+                      <div className="text-[#475569]">{shipment.description || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[#94A3B8]">Shipment Date</div>
+                      <div className="text-[#475569]">{displayDate || '—'}</div>
+                    </div>
                   </div>
-                  <div className="text-right">
+
+                  <div className="mt-4">
                     <Button
                       variant="secondary"
                       onClick={() => openModal(shipment)}
-                      className="px-2 ml-34 py-2 bg-black text-white hover:bg-[#29292a]"
+                      className="w-full bg-black text-white hover:bg-[#29292a]"
                     >
                       Update
                     </Button>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="p-8 text-center text-[#94A3B8]">No shipments found</div>
-            )}
-          </div>
+              );
+            })
+          ) : (
+            <div className="p-6 text-center text-[#94A3B8]">No shipments found</div>
+          )}
         </div>
       </Card>
 
@@ -656,9 +761,11 @@ export default function AdminDashboard() {
                     </div>
 
                     <div>
-                      <p className="text-gray-500">Created At</p>
+                      <p className="text-gray-500">Shipment Date</p>
                       <p className="font-medium">
-                        {shipmentDetails?.created_at ? formatDate(shipmentDetails.created_at) : formatDate(selectedShipment.createdAt)}
+                        {shipmentDetails?.shipment_date
+                          ? formatDateOnly(shipmentDetails.shipment_date)
+                          : formatDateOnly(selectedShipment.shipmentDate) || formatDateOnly(selectedShipment.createdAt)}
                       </p>
                     </div>
 
@@ -703,12 +810,21 @@ export default function AdminDashboard() {
 
                   {/* Location */}
                   <label className="text-sm mb-1 text-gray-600">Location</label>
-                  <Input
-                    placeholder="Enter current location"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    className="mb-4"
-                  />
+                  <div className="relative mb-4">
+                    <select
+                      value={newLocation}
+                      onChange={(e) => setNewLocation(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm appearance-none bg-white focus:border-[#2563EB] focus:outline-none"
+                    >
+                      <option value="">Select location (optional)</option>
+                      {LOCATIONS.map((loc) => (
+                        <option key={loc} value={loc}>
+                          {loc}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  </div>
 
                   {/* Upload / Replace Image */}
                   <label className="text-sm mb-2 text-gray-600">Add/Replace Image</label>

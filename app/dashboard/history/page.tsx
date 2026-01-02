@@ -13,11 +13,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Tabs } from '@/components/Sidebar';
+import { downloadCsv, toCsv } from '@/utils/csv';
 
 interface ShipmentRow {
   id: string;
   tracking_number?: string;
   trackingNumber?: string;
+  origin_location?: string;
   destination?: string;
   delivery_location?: string;
   items_description?: string;
@@ -25,6 +27,7 @@ interface ShipmentRow {
   status?: string;
   created_at?: string;
   createdAt?: string;
+  shipment_date?: string;
   latest_event_time?: string;
   estimated_delivery_date?: string;
 }
@@ -147,17 +150,61 @@ export default function HistoryPage() {
     }
   };
 
+  const formatDateOnly = (value?: string) => {
+    if (!value) return '';
+    try {
+      // shipment_date often comes as YYYY-MM-DD; make it stable across timezones
+      const isPlainDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+      const d = new Date(isPlainDate ? `${value}T00:00:00` : value);
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return value;
+    }
+  };
+
   // normalize each row to the fields our UI uses
   const normalize = (row: ShipmentRow) => {
     return {
       id: row.id,
       trackingNumber: (row.trackingNumber || row.tracking_number || '').toString(),
+      origin: (row.origin_location || '').toString(),
       destination: (row.destination || row.delivery_location || '').toString(),
       description: (row.itemsDescription || row.items_description || '').toString(),
       status: (row.status || '').toString(),
+      shipmentDate: (row.shipment_date || '').toString(),
+      createdAt: (row.createdAt || row.created_at || '').toString(),
       dateTime: (row.latest_event_time || row.createdAt || row.created_at || '').toString(),
       estimatedDelivery: (row.estimated_delivery_date || '').toString(),
     };
+  };
+
+  const handleExportCsv = () => {
+    const rows = shipments.map((s) => {
+      const row = normalize(s);
+      return {
+        trackingNumber: row.trackingNumber || '—',
+        origin: row.origin || '—',
+        destination: row.destination || '—',
+        description: row.description || '—',
+        status: getStatusLabel(row.status),
+        shipmentDate: formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '',
+      };
+    });
+
+    const csv = toCsv(rows, [
+      { key: 'trackingNumber', header: 'Waybill Number' },
+      { key: 'origin', header: 'Origin' },
+      { key: 'destination', header: 'Destination' },
+      { key: 'description', header: 'Description' },
+      { key: 'status', header: 'Status' },
+      { key: 'shipmentDate', header: 'Shipment Date' },
+    ]);
+
+    downloadCsv(`shipment-history-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   };
 
   return (
@@ -170,7 +217,7 @@ export default function HistoryPage() {
       >
         <div className=" bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <Tabs />      
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
         
         <div>
           <h1 className="text-3xl font-bold text-[#1E293B] mb-2">Logistics History</h1>
@@ -198,7 +245,17 @@ export default function HistoryPage() {
 
             <div>
               <label className="text-sm text-slate-600 mb-2 block"> &nbsp;</label>
-              <div className="relative">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={handleExportCsv}
+                  disabled={isLoading || shipments.length === 0}
+                  className="h-11"
+                >
+                  Export CSV
+                </Button>
+
+                <div className="relative flex-1">
                 <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#94A3B8] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
@@ -217,6 +274,7 @@ export default function HistoryPage() {
                 <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#94A3B8] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -244,20 +302,20 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Table header */}
-            <div className="overflow-hidden rounded-md shadow-sm">
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-hidden rounded-md shadow-sm">
               <div className="bg-[#0F2940] text-white grid grid-cols-5 gap-4 items-center px-6 py-4 text-sm font-medium">
                 <div>Waybill Number</div>
                 <div>Destination</div>
                 <div>Description</div>
                 <div>Status</div>
-                <div className="text-right">Date/Time</div>
+                <div className="text-right">Shipment Date</div>
               </div>
 
-              {/* rows */}
               <div className="bg-white divide-y divide-gray-100">
                 {shipments.map((s) => {
                   const row = normalize(s);
+                  const displayDate = formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '';
                   return (
                     <div key={row.id} className="grid grid-cols-5 gap-4 items-center px-6 py-6">
                       <div className="text-sm font-semibold text-[#0F2940]">{row.trackingNumber || '—'}</div>
@@ -267,12 +325,48 @@ export default function HistoryPage() {
                         <Badge variant={getStatusBadgeVariant(row.status)}>{getStatusLabel(row.status)}</Badge>
                       </div>
                       <div className="text-right text-sm text-[#94A3B8]">
-                        {formatDateTime(row.dateTime)}
+                        {displayDate}
                       </div>
                     </div>
                   );
                 })}
               </div>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3">
+              {shipments.map((s) => {
+                const row = normalize(s);
+                const displayDate = formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '';
+                return (
+                  <div key={row.id} className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm text-[#94A3B8]">Waybill Number</div>
+                        <div className="text-base font-semibold text-[#0F2940]">{row.trackingNumber || '—'}</div>
+                      </div>
+                      <div>
+                        <Badge variant={getStatusBadgeVariant(row.status)}>{getStatusLabel(row.status)}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+                      <div>
+                        <div className="text-[#94A3B8]">Destination</div>
+                        <div className="text-[#475569]">{row.destination || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[#94A3B8]">Description</div>
+                        <div className="text-[#475569]">{row.description || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[#94A3B8]">Shipment Date</div>
+                        <div className="text-[#475569]">{displayDate || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

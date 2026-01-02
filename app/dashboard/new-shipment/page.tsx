@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs } from '@/components/Sidebar';
 import { createClient } from '@/utils/supabase/client';
+import { LOCATIONS } from '@/lib/locations';
 
 const STORAGE_BUCKET = 'package-images';
 
@@ -21,6 +22,7 @@ export default function NewShipmentPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     waybillNumber: '',
+    shipmentDate: '',
     senderName: '',
     receiverName: '',
     itemsDescription: '',
@@ -33,7 +35,7 @@ export default function NewShipmentPage() {
   const [imagePreview, setImagePreview] = useState('');
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -51,6 +53,7 @@ export default function NewShipmentPage() {
 
   const isFormValid =
     formData.waybillNumber &&
+    formData.shipmentDate &&
     formData.senderName &&
     formData.receiverName &&
     formData.itemsDescription &&
@@ -114,6 +117,7 @@ export default function NewShipmentPage() {
         },
         body: JSON.stringify({
           waybillNumber: formData.waybillNumber,
+          shipmentDate: formData.shipmentDate,
           senderName: formData.senderName,
           receiverName: formData.receiverName,
           itemsDescription: formData.itemsDescription,
@@ -138,6 +142,7 @@ export default function NewShipmentPage() {
       // Reset form and redirect
       setFormData({
         waybillNumber: '',
+        shipmentDate: '',
         senderName: '',
         receiverName: '',
         itemsDescription: '',
@@ -169,7 +174,7 @@ export default function NewShipmentPage() {
         <div className=" bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <Tabs />
 
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
             <h2 className="text-[20px] font-semibold text-slate-800 mb-1">
               New Shipment Input
             </h2>
@@ -178,7 +183,7 @@ export default function NewShipmentPage() {
             </p>
 
             {/* Sender / Receiver */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               {(['senderName', 'receiverName'] as const).map((field, i) => (
                 <div key={field}>
                   <label className="block text-[13px] font-medium text-gray-700 mb-2">
@@ -195,8 +200,8 @@ export default function NewShipmentPage() {
               ))}
             </div>
 
-            {/* Waybill & Description */}
-            <div className="grid grid-cols-3 gap-4">
+            {/* Waybill & Shipment Date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[13px] font-medium mb-2">
                   Waybill Number
@@ -210,31 +215,43 @@ export default function NewShipmentPage() {
                 />
               </div>
 
-              <div className="col-span-2">
+              <div>
                 <label className="block text-[13px] font-medium mb-2">
-                  Items Description
+                  Shipment Date
                 </label>
-                <textarea
-                  name="itemsDescription"
-                  rows={4}
-                  value={formData.itemsDescription}
+                <input
+                  type="date"
+                  name="shipmentDate"
+                  value={formData.shipmentDate}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 text-[14px] border border-gray-300 rounded-md resize-none"
+                  className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
                 />
               </div>
+            </div>
+
+            {/* Description */}
+            <div className="mt-4">
+              <label className="block text-[13px] font-medium mb-2">
+                Items Description
+              </label>
+              <textarea
+                name="itemsDescription"
+                rows={4}
+                value={formData.itemsDescription}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 text-[14px] border border-gray-300 rounded-md resize-none"
+              />
+            </div>
 
             {/* Weight */}
-            <div className="mb-6 w-60 -mt-14">
-              <label className="block text-[13px] font-medium mb-2">
-                Weight
-              </label>
+            <div className="mb-6 mt-4 w-full md:w-60">
+              <label className="block text-[13px] font-medium mb-2">Weight</label>
               <input
                 name="weight"
                 value={formData.weight}
                 onChange={handleInputChange}
                 className="w-full h-12 px-4 border border-gray-300 rounded-md"
               />
-            </div>
             </div>
 
             {/* Image Upload */}
@@ -260,22 +277,44 @@ export default function NewShipmentPage() {
             </div>
 
             {/* Locations */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
-             
-              <input
-                name="originLocation"
-                placeholder="Origin Location"
-                value={formData.originLocation}
-                onChange={handleInputChange}
-                className="h-12 px-4 border border-gray-300 rounded-md"
-              />
-              <input
-                name="destination"
-                placeholder="Receiver's Location"
-                value={formData.destination}
-                onChange={handleInputChange}
-                className="h-12 px-4 border border-gray-300 rounded-md"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-2">
+                  Origin Location
+                </label>
+                <select
+                  name="originLocation"
+                  value={formData.originLocation}
+                  onChange={handleInputChange}
+                  className="h-12 px-4 border border-gray-300 rounded-md w-full bg-white"
+                >
+                  <option value="">Select origin</option>
+                  {LOCATIONS.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-2">
+                  Destination
+                </label>
+                <select
+                  name="destination"
+                  value={formData.destination}
+                  onChange={handleInputChange}
+                  className="h-12 px-4 border border-gray-300 rounded-md w-full bg-white"
+                >
+                  <option value="">Select destination</option>
+                  {LOCATIONS.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Error Message */}

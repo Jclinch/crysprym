@@ -102,10 +102,10 @@ export default function SignInPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="w-full lg:w-[50%] flex items-center justify-center">
+      <div className="w-full lg:w-[50%] flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-[602px]">
           {/* LOGO */}
-          <div className="-ml-9">
+          <div className="flex justify-center sm:justify-start sm:-ml-9">
             <Image
               src="/logo.png"
               alt="cryspryms Pro Logo"

@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       query = query.or(
-        `tracking_number.ilike.%${search}%,pickup_location.ilike.%${search}%,delivery_location.ilike.%${search}%`
+        `tracking_number.ilike.%${search}%,origin_location.ilike.%${search}%,destination.ilike.%${search}%`
       );
     }
 
@@ -126,6 +126,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // shipmentDate should be an ISO date string (YYYY-MM-DD)
+    const shipmentDate = typeof body.shipmentDate === 'string' ? body.shipmentDate.trim() : '';
+    if (!shipmentDate) {
+      return NextResponse.json(
+        { error: 'shipmentDate is required' },
+        { status: 400 }
+      );
+    }
+
     // Use a Supabase client authorized with the user's token to satisfy RLS
     const authHeader = request.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '') || '';
@@ -156,6 +165,7 @@ export async function POST(request: NextRequest) {
           weight: body.weight,
           origin_location: body.originLocation,
           destination: body.destination,
+          shipment_date: shipmentDate,
           package_image_bucket: body.packageImageBucket,
           package_image_path: body.packageImagePath,
           package_image_url: body.packageImageUrl,
