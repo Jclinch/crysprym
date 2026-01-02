@@ -32,7 +32,7 @@ const Topbar = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (mounted) setUserEmail(user?.email ?? '');
-      } catch (e) {
+      } catch {
         // ignore
       }
     })();
@@ -69,12 +69,12 @@ const Topbar = () => {
 
       {/* Top tab switch navigation */}
       <nav className="px-4 sm:px-6 pb-4">
-        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 sm:overflow-x-auto sm:whitespace-nowrap">
           {adminNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer
+              className={`w-full sm:w-auto sm:shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer
                 ${isActive(item.href) ? 'bg-[#0F2940] text-white' : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#1E293B]'}
               `}
             >

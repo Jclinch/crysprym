@@ -373,7 +373,7 @@ export function Tabs() {
   const router = useRouter();
 
   return (
-    <div className="flex gap-2 p-4 border-b border-gray-200">
+    <div className="grid grid-cols-2 gap-2 p-4 border-b border-gray-200 sm:flex sm:items-center sm:gap-2">
       {tabs.map((tab) => {
         const active = pathname === tab.href;
         const Icon = tab.icon;
@@ -382,7 +382,7 @@ export function Tabs() {
           <button
             key={tab.href}
             onClick={() => router.push(tab.href)}
-            className="relative px-5 py-2 rounded-lg text-[14px] font-medium cursor-pointer"
+            className="relative w-full sm:w-auto px-5 py-2 rounded-lg text-[14px] font-medium cursor-pointer"
           >
             {active && (
               <motion.div

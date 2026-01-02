@@ -48,8 +48,6 @@
 
 import React from 'react';
 import { Header } from './Header';
-
-import { Tabs } from '@/components/Sidebar';
 import { useRouter } from 'next/navigation';
 
 interface DashboardLayoutProps {

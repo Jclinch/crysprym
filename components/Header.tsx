@@ -68,7 +68,7 @@ export function Header({ title = 'Dashboard', onLogout }: HeaderProps) {
       {/* Sign Out */}
       <button
         onClick={handleLogout}
-        className="flex items-center gap-3 text-sm font-medium text-red-500 hover:text-red-600 transition"
+        className="flex items-center gap-3 text-xs font-medium text-red-500 hover:text-red-600 transition"
       >
         <LogOut size={18} />
         Sign Out
