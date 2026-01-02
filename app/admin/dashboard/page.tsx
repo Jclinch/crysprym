@@ -678,7 +678,10 @@ export default function AdminDashboard() {
           />
 
           {/* Modal */}
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 p-6">
+          <div
+            className="relative bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 p-6 max-h-[90vh] overflow-y-auto overscroll-contain"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             {/* Close */}
             <button
               onClick={closeModal}
