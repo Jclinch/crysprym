@@ -51,12 +51,23 @@ export default function TrackingPage() {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState('');
 
+  const normalizeTrackingNumber = (value: string) => {
+    return (value || '')
+      .trim()
+      // Normalize various dash characters to a standard hyphen
+      .replace(/[\u2010-\u2015\u2212]/g, '-')
+      // Remove all whitespace (mobile keyboards sometimes insert non-breaking spaces)
+      .replace(/\s+/g, '')
+      .toUpperCase();
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSearched(true);
 
-    if (!trackingNumber.trim()) {
+    const normalizedTrackingNumber = normalizeTrackingNumber(trackingNumber);
+    if (!normalizedTrackingNumber) {
       setError('Please enter a tracking number');
       setData(null);
       return;
@@ -64,7 +75,7 @@ export default function TrackingPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/tracking/${encodeURIComponent(trackingNumber.trim())}`);
+      const res = await fetch(`/api/tracking/${encodeURIComponent(normalizedTrackingNumber)}`);
       if (!res.ok) {
         setError('Shipment not found');
         setData(null);
@@ -100,8 +111,8 @@ return (
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
                   <Tabs />
 
-        <div className="p-8">
-                  <div className="w-full max-w-[1100px] mx-auto space-y-8 px-4">
+      <div className="p-4 sm:p-8">
+          <div className="w-full max-w-[1100px] mx-auto space-y-8 px-0 sm:px-4">
         {/* Title */}
         <div>
           <h1 className="text-3xl font-bold text-[#1E293B] mb-1">Live Tracking</h1>
@@ -112,7 +123,7 @@ return (
         <div className="flex gap-4 items-start">
           <div className="flex-1">
             <div className="bg-transparent">
-              <form onSubmit={handleSearch} className="flex gap-4 items-center">
+              <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
                 <div className="flex-1">
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-[#94A3B8]">
@@ -125,12 +136,17 @@ return (
                       placeholder="BR-251212-984470"
                       value={trackingNumber}
                       onChange={(e) => setTrackingNumber(e.target.value)}
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      inputMode="text"
+                      enterKeyHint="search"
                     />
                   </div>
                 </div>
 
                 <button
-                  className="w-[140px] h-11 rounded-md bg-[#2c2b2a] hover:bg-[#4b4a48] text-white font-medium shadow cursor-pointer"
+                  className="w-full sm:w-[140px] h-11 rounded-md bg-[#2c2b2a] hover:bg-[#4b4a48] text-white font-medium shadow cursor-pointer"
                   type="submit"
                 >
                   {loading ? 'Tracking...' : 'Track'}
@@ -218,51 +234,104 @@ return (
               <div className="mt-10">
                 <h3 className="text-lg font-semibold text-[#1E293B] mb-6">Delivery Progress</h3>
 
-                {/* horizontal progress bar */}
-                <div className="relative px-6 pb-6">
-                  {/* Background line */}
-                  <div className="absolute left-6 right-6 top-8 h-1.5 bg-[#E6E7EB] rounded-full"></div>
-                  
-                  {/* Filled progress line */}
-                  {progressIndex >= 0 && (
-                    <div 
-                      className="absolute left-6 top-8 h-1.5 bg-[#34D399] rounded-full transition-all duration-500"
-                      style={{
-                        width: `calc(${(progressIndex / (STEP_LABELS.length - 1)) * 100}% + 22px - ${progressIndex === 0 ? '0px' : '22px'})`,
-                      }}
-                    ></div>
-                  )}
+                {/* Mobile: vertical progress */}
+                <div className="md:hidden">
+                  <div className="relative pl-10">
+                    {/* Background vertical line */}
+                    <div className="absolute left-5 top-2 bottom-2 w-[3px] bg-[#E6E7EB] rounded-full" />
 
-                  <div className="relative flex items-center justify-between">
-                    {STEP_LABELS.map((label, idx) => {
-                      const completed = idx <= progressIndex;
-                      const active = idx === progressIndex;
-                      const circleSize = active ? 56 : 44;
+                    {/* Filled vertical line */}
+                    {progressIndex >= 0 && (
+                      <div
+                        className="absolute left-5 top-2 w-[3px] bg-[#34D399] rounded-full transition-all duration-500"
+                        style={{
+                          height: `calc(${((progressIndex + 1) / STEP_LABELS.length) * 100}% - 8px)`,
+                        }}
+                      />
+                    )}
 
-                      return (
-                        <div key={label} className="flex-1 flex flex-col items-center">
-                          <div
-                            className={`rounded-full flex items-center justify-center ${completed ? 'border-transparent' : 'border-[#E6E7EB]'}`}
-                            style={{
-                              width: circleSize,
-                              height: circleSize,
-                              boxShadow: active ? '0 6px 18px rgba(52,211,153,0.12)' : undefined,
-                              background: completed ? '#34D399' : '#FFFFFF',
-                              border: completed ? 'none' : '2px solid #E6E7EB',
-                            }}
-                          >
-                            {/* icon */}
-                            <div className="text-white text-[18px] font-semibold">
-                              {completed ? '✓' : idx + 1}
+                    <div className="space-y-5">
+                      {STEP_LABELS.map((label, idx) => {
+                        const completed = idx <= progressIndex;
+                        const active = idx === progressIndex;
+                        const circleSize = active ? 44 : 36;
+
+                        return (
+                          <div key={label} className="relative flex items-start gap-4">
+                            <div
+                              className="shrink-0 rounded-full flex items-center justify-center"
+                              style={{
+                                width: circleSize,
+                                height: circleSize,
+                                boxShadow: active ? '0 6px 18px rgba(52,211,153,0.12)' : undefined,
+                                background: completed ? '#34D399' : '#FFFFFF',
+                                border: completed ? 'none' : '2px solid #E6E7EB',
+                              }}
+                            >
+                              <div className={`${completed ? 'text-white' : 'text-[#94A3B8]'} text-[14px] font-semibold`}>
+                                {completed ? '✓' : idx + 1}
+                              </div>
+                            </div>
+
+                            <div className="pt-1">
+                              <div className={`${active ? 'text-[#16A34A]' : completed ? 'text-[#34D399]' : 'text-[#94A3B8]'} text-sm font-medium`}>
+                                {label}
+                              </div>
                             </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
 
-                          <div className={`mt-3 text-sm ${active ? 'text-[#16A34A]' : completed ? 'text-[#34D399]' : 'text-[#94A3B8]'}`}>
-                            {label}
+                {/* Desktop/tablet: keep horizontal progress */}
+                <div className="hidden md:block">
+                  <div className="relative px-6 pb-6">
+                    {/* Background line */}
+                    <div className="absolute left-6 right-6 top-8 h-1.5 bg-[#E6E7EB] rounded-full"></div>
+                    
+                    {/* Filled progress line */}
+                    {progressIndex >= 0 && (
+                      <div 
+                        className="absolute left-6 top-8 h-1.5 bg-[#34D399] rounded-full transition-all duration-500"
+                        style={{
+                          width: `calc(${(progressIndex / (STEP_LABELS.length - 1)) * 100}% + 22px - ${progressIndex === 0 ? '0px' : '22px'})`,
+                        }}
+                      ></div>
+                    )}
+
+                    <div className="relative flex items-center justify-between">
+                      {STEP_LABELS.map((label, idx) => {
+                        const completed = idx <= progressIndex;
+                        const active = idx === progressIndex;
+                        const circleSize = active ? 56 : 44;
+
+                        return (
+                          <div key={label} className="flex-1 flex flex-col items-center">
+                            <div
+                              className={`rounded-full flex items-center justify-center ${completed ? 'border-transparent' : 'border-[#E6E7EB]'}`}
+                              style={{
+                                width: circleSize,
+                                height: circleSize,
+                                boxShadow: active ? '0 6px 18px rgba(52,211,153,0.12)' : undefined,
+                                background: completed ? '#34D399' : '#FFFFFF',
+                                border: completed ? 'none' : '2px solid #E6E7EB',
+                              }}
+                            >
+                              {/* icon */}
+                              <div className="text-white text-[18px] font-semibold">
+                                {completed ? '✓' : idx + 1}
+                              </div>
+                            </div>
+
+                            <div className={`mt-3 text-sm ${active ? 'text-[#16A34A]' : completed ? 'text-[#34D399]' : 'text-[#94A3B8]'}`}>
+                              {label}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -22,9 +22,31 @@ export async function GET(
   try {
     const { trackingNumber: rawTrackingNumber } = await params;
     const supabase = createClient(cookies());
-    const trackingNumber = rawTrackingNumber?.trim() || '';
 
-    if (!trackingNumber) {
+    const safeDecode = (value: string) => {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    };
+
+    const normalizeTrackingNumber = (value: string) => {
+      return (value || '')
+        .trim()
+        .replace(/[\u2010-\u2015\u2212]/g, '-')
+        .replace(/\s+/g, '')
+        .toUpperCase();
+    };
+
+    const decoded = safeDecode(rawTrackingNumber || '');
+    const trimmedTrackingNumber = (decoded || '').trim();
+    const normalizedTrackingNumber = normalizeTrackingNumber(decoded);
+
+    // Prefer the human-entered trimmed value first; fallback to a stricter normalized form.
+    const trackingNumberForLog = trimmedTrackingNumber || normalizedTrackingNumber;
+
+    if (!trimmedTrackingNumber && !normalizedTrackingNumber) {
       console.error('No Waybill number provided');
       return NextResponse.json(
         { error: 'Waybill number is required' },
@@ -32,25 +54,45 @@ export async function GET(
       );
     }
 
-    console.log('Searching for shipment with Waybill number:', trackingNumber);
+    console.log('Searching for shipment with Waybill number:', trackingNumberForLog);
 
     // Query using the view for optimized data retrieval (exact match on assigned waybill)
-    const { data: shipment, error: shipmentError } = await supabase
-      .from('v_shipments_with_latest_event')
-      .select('*')
-      .eq('tracking_number', trackingNumber)
-      .maybeSingle();
+    const findShipment = async (candidate: string) => {
+      if (!candidate) return { shipment: null as unknown, error: null as unknown };
+      const { data, error } = await supabase
+        .from('v_shipments_with_latest_event')
+        .select('*')
+        // Use case-insensitive exact match (ILIKE with no wildcards)
+        .ilike('tracking_number', candidate)
+        .maybeSingle();
+      return { shipment: data, error };
+    };
+
+    const firstTry = await findShipment(trimmedTrackingNumber);
+    let shipment = firstTry.shipment;
+    let shipmentError = firstTry.error;
+
+    if (!shipment && normalizedTrackingNumber && normalizedTrackingNumber !== trimmedTrackingNumber) {
+      const secondTry = await findShipment(normalizedTrackingNumber);
+      shipment = secondTry.shipment;
+      shipmentError = secondTry.error;
+    }
 
     if (shipmentError) {
       console.error('Shipment query error:', shipmentError);
+      const details = shipmentError instanceof Error
+        ? shipmentError.message
+        : typeof shipmentError === 'object' && shipmentError && 'message' in shipmentError
+          ? String((shipmentError as { message: unknown }).message)
+          : undefined;
       return NextResponse.json(
-        { error: 'Shipment not found', details: shipmentError.message },
+        { error: 'Shipment not found', details },
         { status: 404 }
       );
     }
 
     if (!shipment) {
-      console.warn('No shipment found for tracking number:', trackingNumber);
+      console.warn('No shipment found for tracking number:', trackingNumberForLog);
       
       // Debug: check if tracking_number column has any non-null values
       const { data: allShipments } = await supabase
@@ -103,9 +145,6 @@ export async function GET(
       location: event.location,
       eventTimestamp: event.event_time,
     }));
-
-    // Get shipment type from metadata or default to standard
-    const shipmentType = shipment.metadata?.shipmentType || 'standard';
 
     // Map shipment status to progressIndex (0-3)
     // Status values: 'draft', 'created', 'confirmed', 'in_transit', 'delivered', 'cancelled', 'returned'
