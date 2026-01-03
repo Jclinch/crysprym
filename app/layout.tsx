@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "cryspryms Pro - Shipment Management",
+  title: "Crysprym Logistics - Shipment Management",
   description: "Professional logistics and shipment tracking system",
  
 };
