@@ -88,6 +88,19 @@ CREATE TABLE IF NOT EXISTS public.shipment_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- 6b) Users profile table (role + location)
+-- Note: this is separate from auth.users; we reference auth.users for identity.
+CREATE TABLE IF NOT EXISTS public.users (
+  id uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+  email text UNIQUE,
+  full_name text,
+  last_sign_in_at timestamptz,
+  role text NOT NULL DEFAULT 'user'::text CHECK (role = ANY (ARRAY['user'::text, 'admin'::text, 'superadmin'::text])),
+  location text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- 7) Indexes to improve query performance
 CREATE INDEX IF NOT EXISTS idx_shipments_user_id ON public.shipments (user_id);
 CREATE INDEX IF NOT EXISTS idx_shipments_tracking_number ON public.shipments (tracking_number);
@@ -109,6 +122,34 @@ DROP TRIGGER IF EXISTS trg_set_updated_at_shipments ON public.shipments;
 CREATE TRIGGER trg_set_updated_at_shipments
 BEFORE UPDATE ON public.shipments
 FOR EACH ROW EXECUTE PROCEDURE public.fn_set_updated_at();
+
+-- Attach trigger to users
+DROP TRIGGER IF EXISTS trg_set_updated_at_users ON public.users;
+CREATE TRIGGER trg_set_updated_at_users
+BEFORE UPDATE ON public.users
+FOR EACH ROW EXECUTE PROCEDURE public.fn_set_updated_at();
+
+-- Helper functions for RLS
+CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role IN ('admin', 'superadmin')
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_superadmin() RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'superadmin'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.current_user_location() RETURNS text
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT u.location FROM public.users u WHERE u.id = auth.uid();
+$$;
 
 -- 9) Trigger function to auto-generate a tracking number when none provided
 CREATE OR REPLACE FUNCTION public.fn_generate_tracking_number()
@@ -147,16 +188,46 @@ FOR EACH ROW EXECUTE PROCEDURE public.fn_generate_tracking_number();
 
 -- 10) Row Level Security (RLS) policies so users can only access their own shipments
 -- Enable RLS
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shipments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shipment_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shipment_events ENABLE ROW LEVEL SECURITY;
 
+-- Users policies:
+DROP POLICY IF EXISTS "users_select_own" ON public.users;
+CREATE POLICY "users_select_own" ON public.users
+  FOR SELECT TO authenticated
+  USING (id = auth.uid());
+
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
+CREATE POLICY "users_update_own" ON public.users
+  FOR UPDATE TO authenticated
+  USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
+
+DROP POLICY IF EXISTS "users_superadmin_select_all" ON public.users;
+CREATE POLICY "users_superadmin_select_all" ON public.users
+  FOR SELECT TO authenticated
+  USING (public.is_superadmin());
+
 -- Shipments policies:
--- Allow SELECT for any authenticated user (shared shipment history)
+-- Allow SELECT only for shipments sent from or to the user's location;
+-- admins/superadmins can read all shipments.
 DROP POLICY IF EXISTS "shipments_select_owner" ON public.shipments;
 DROP POLICY IF EXISTS "shipments_select_authenticated" ON public.shipments;
-CREATE POLICY "shipments_select_authenticated" ON public.shipments
-  FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "shipments_select_location_or_admin" ON public.shipments;
+CREATE POLICY "shipments_select_location_or_admin" ON public.shipments
+  FOR SELECT TO authenticated
+  USING (
+    public.is_admin()
+    OR (
+      public.current_user_location() IS NOT NULL
+      AND (
+        origin_location = public.current_user_location()
+        OR destination = public.current_user_location()
+      )
+    )
+  );
 
 -- Allow INSERT only when auth.uid() = user_id
 CREATE POLICY "shipments_insert_owner" ON public.shipments
@@ -174,7 +245,17 @@ CREATE POLICY "shipments_delete_owner" ON public.shipments
 DROP POLICY IF EXISTS "attachments_select_owner" ON public.shipment_attachments;
 DROP POLICY IF EXISTS "attachments_select_authenticated" ON public.shipment_attachments;
 CREATE POLICY "attachments_select_authenticated" ON public.shipment_attachments
-  FOR SELECT TO authenticated USING (true);
+  FOR SELECT TO authenticated
+  USING (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.shipments s
+      WHERE s.id = shipment_attachments.shipment_id
+        AND public.current_user_location() IS NOT NULL
+        AND (s.origin_location = public.current_user_location() OR s.destination = public.current_user_location())
+    )
+  );
 
 CREATE POLICY "attachments_insert_owner" ON public.shipment_attachments
   FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.shipments s WHERE s.id = shipment_attachments.shipment_id AND s.user_id = auth.uid()));
@@ -186,7 +267,17 @@ CREATE POLICY "attachments_delete_owner" ON public.shipment_attachments
 DROP POLICY IF EXISTS "events_select_owner" ON public.shipment_events;
 DROP POLICY IF EXISTS "events_select_authenticated" ON public.shipment_events;
 CREATE POLICY "events_select_authenticated" ON public.shipment_events
-  FOR SELECT TO authenticated USING (true);
+  FOR SELECT TO authenticated
+  USING (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.shipments s
+      WHERE s.id = shipment_events.shipment_id
+        AND public.current_user_location() IS NOT NULL
+        AND (s.origin_location = public.current_user_location() OR s.destination = public.current_user_location())
+    )
+  );
 
 CREATE POLICY "events_insert_owner" ON public.shipment_events
   FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.shipments s WHERE s.id = shipment_events.shipment_id AND s.user_id = auth.uid()));

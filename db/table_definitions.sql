@@ -124,7 +124,7 @@ end $$;
 -- Allow authenticated users to select their own shipments
 do $$
 begin
-  create policy "shipments_select_authenticated"
+  create policy "shipments_select_location_or_admin"
   on public.shipments
   for select
   to authenticated
@@ -170,11 +170,12 @@ create table public.users (
   full_name text null,
   last_sign_in_at timestamp with time zone null,
   role text null default 'user'::text,
+  location text null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   constraint users_pkey primary key (id),
   constraint users_email_key unique (email),
-  constraint users_role_check check ((role = any (array['user'::text, 'admin'::text])))
+  constraint users_role_check check ((role = any (array['user'::text, 'admin'::text, 'superadmin'::text])))
 ) TABLESPACE pg_default;
 
 create trigger trg_set_updated_at_users BEFORE

@@ -14,7 +14,7 @@ export async function PATCH(
     const supabase = createClient(cookies());
     const { id } = await params;
 
-    // Check if user is admin
+    // Check if user is superadmin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,11 +26,20 @@ export async function PATCH(
       .eq('id', user.id)
       .single();
 
-    if (userError || userData?.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (userError || userData?.role !== 'superadmin') {
+      return NextResponse.json({ error: 'SuperAdmin access required' }, { status: 403 });
     }
 
-    const { status: progressStep, location, waybillNumber, packageImageBucket, packageImagePath, packageImageUrl } = await request.json();
+    const {
+      status: progressStep,
+      location,
+      waybillNumber,
+      packageImageBucket,
+      packageImagePath,
+      packageImageUrl,
+      receiverName,
+      weight,
+    } = await request.json();
 
     if (!progressStep) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
@@ -62,6 +71,22 @@ export async function PATCH(
     // Include destination if location is provided
     if (location && location.trim()) {
       updateData.destination = location.trim();
+    }
+
+    // Allow SuperAdmin to correct receiver name
+    if (typeof receiverName === 'string') {
+      const trimmed = receiverName.trim();
+      if (trimmed) {
+        updateData.receiver_name = trimmed;
+      }
+    }
+
+    // Allow SuperAdmin to correct weight
+    if (typeof weight === 'number') {
+      if (!Number.isFinite(weight) || weight <= 0) {
+        return NextResponse.json({ error: 'Invalid weight' }, { status: 400 });
+      }
+      updateData.weight = weight;
     }
 
     // Optionally override tracking number if explicitly provided

@@ -20,6 +20,7 @@ interface ShipmentRow {
   origin_location?: string;
   destination?: string;
   delivery_location?: string;
+  receiver_contact?: { phone?: string; email?: string } | null;
   items_description?: string;
   itemsDescription?: string;
   status?: string;
@@ -81,7 +82,8 @@ export default function HistoryPage() {
               (ship.tracking_number || '').toLowerCase().includes(searchLower) ||
               (ship.destination || '').toLowerCase().includes(searchLower) ||
               (ship.items_description || '').toLowerCase().includes(searchLower) ||
-              (ship.origin_location || '').toLowerCase().includes(searchLower)
+              (ship.origin_location || '').toLowerCase().includes(searchLower) ||
+              ((ship.receiver_contact?.phone || '') as string).toLowerCase().includes(searchLower)
           );
         }
 
@@ -155,6 +157,7 @@ export default function HistoryPage() {
       trackingNumber: (row.trackingNumber || row.tracking_number || '').toString(),
       origin: (row.origin_location || '').toString(),
       destination: (row.destination || row.delivery_location || '').toString(),
+      receiverPhone: (row.receiver_contact?.phone || '').toString(),
       description: (row.itemsDescription || row.items_description || '').toString(),
       status: (row.status || '').toString(),
       shipmentDate: (row.shipment_date || '').toString(),
@@ -171,6 +174,7 @@ export default function HistoryPage() {
         trackingNumber: row.trackingNumber || '—',
         origin: row.origin || '—',
         destination: row.destination || '—',
+        receiverPhone: row.receiverPhone || '—',
         description: row.description || '—',
         status: getStatusLabel(row.status),
         shipmentDate: formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '',
@@ -181,6 +185,7 @@ export default function HistoryPage() {
       { key: 'trackingNumber', header: 'Waybill Number' },
       { key: 'origin', header: 'Origin' },
       { key: 'destination', header: 'Destination' },
+      { key: 'receiverPhone', header: "Receiver Phone" },
       { key: 'description', header: 'Description' },
       { key: 'status', header: 'Status' },
       { key: 'shipmentDate', header: 'Shipment Date' },
@@ -286,12 +291,15 @@ export default function HistoryPage() {
           <div className="space-y-4">
             {/* Desktop table */}
             <div className="hidden md:block overflow-hidden rounded-md shadow-sm">
-              <div className="bg-[#0F2940] text-white grid grid-cols-5 gap-4 items-center px-6 py-4 text-sm font-medium">
+              <div className="bg-[#0F2940] text-white grid grid-cols-8 gap-4 items-center px-6 py-4 text-sm font-medium">
                 <div>Waybill Number</div>
+                <div>Origin</div>
                 <div>Destination</div>
+                <div>Receiver Phone</div>
                 <div>Description</div>
                 <div>Status</div>
                 <div className="text-right">Shipment Date</div>
+                <div className="text-right">Print</div>
               </div>
 
               <div className="bg-white divide-y divide-gray-100">
@@ -299,15 +307,30 @@ export default function HistoryPage() {
                   const row = normalize(s);
                   const displayDate = formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '';
                   return (
-                    <div key={row.id} className="grid grid-cols-5 gap-4 items-center px-6 py-6">
+                    <div key={row.id} className="grid grid-cols-8 gap-4 items-center px-6 py-6">
                       <div className="text-sm font-semibold text-[#0F2940]">{row.trackingNumber || '—'}</div>
+                      <div className="text-sm text-[#475569]">{row.origin || '—'}</div>
                       <div className="text-sm text-[#475569]">{row.destination || '—'}</div>
+                      <div className="text-sm text-[#475569]">{row.receiverPhone || '—'}</div>
                       <div className="text-sm text-[#475569]">{row.description || '—'}</div>
                       <div>
                         <Badge variant={getStatusBadgeVariant(row.status)}>{getStatusLabel(row.status)}</Badge>
                       </div>
                       <div className="text-right text-sm text-[#94A3B8]">
                         {displayDate}
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          disabled={!row.id}
+                          onClick={() => {
+                            if (!row.id) return;
+                            window.open(`/dashboard/print/${row.id}`, '_blank', 'noopener,noreferrer');
+                          }}
+                        >
+                          Print
+                        </Button>
                       </div>
                     </div>
                   );
@@ -334,8 +357,16 @@ export default function HistoryPage() {
 
                     <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
                       <div>
+                        <div className="text-[#94A3B8]">Origin</div>
+                        <div className="text-[#475569]">{row.origin || '—'}</div>
+                      </div>
+                      <div>
                         <div className="text-[#94A3B8]">Destination</div>
                         <div className="text-[#475569]">{row.destination || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[#94A3B8]">Receiver Phone</div>
+                        <div className="text-[#475569]">{row.receiverPhone || '—'}</div>
                       </div>
                       <div>
                         <div className="text-[#94A3B8]">Description</div>
@@ -344,6 +375,21 @@ export default function HistoryPage() {
                       <div>
                         <div className="text-[#94A3B8]">Shipment Date</div>
                         <div className="text-[#475569]">{displayDate || '—'}</div>
+                      </div>
+
+                      <div className="pt-2">
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          className="w-full"
+                          disabled={!row.id}
+                          onClick={() => {
+                            if (!row.id) return;
+                            window.open(`/dashboard/print/${row.id}`, '_blank', 'noopener,noreferrer');
+                          }}
+                        >
+                          Print Shipment
+                        </Button>
                       </div>
                     </div>
                   </div>

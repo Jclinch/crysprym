@@ -1,5 +1,5 @@
 // app/api/admin/users/[id]/route.ts
-// Admin User Update API - PATCH /api/admin/users/[id]
+// SuperAdmin User Update API - PATCH /api/admin/users/[id]
 
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
@@ -13,7 +13,7 @@ export async function PATCH(
     const supabase = createClient(cookies());
     const { id } = await params;
 
-    // Check if user is admin
+    // Check if user is superadmin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,20 +25,37 @@ export async function PATCH(
       .eq('id', user.id)
       .single();
 
-    if (userError || userData?.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (userError || userData?.role !== 'superadmin') {
+      return NextResponse.json({ error: 'SuperAdmin access required' }, { status: 403 });
     }
 
-    const { role } = await request.json();
+    const { role, location } = await request.json();
 
-    if (!role || !['user', 'admin'].includes(role)) {
-      return NextResponse.json({ error: 'Valid role is required' }, { status: 400 });
+    const update: Record<string, unknown> = {};
+
+    if (typeof role === 'string') {
+      if (!['user', 'admin'].includes(role)) {
+        return NextResponse.json({ error: 'Valid role is required' }, { status: 400 });
+      }
+      update.role = role;
+    }
+
+    if (typeof location === 'string') {
+      const trimmed = location.trim();
+      if (!trimmed) {
+        return NextResponse.json({ error: 'Valid location is required' }, { status: 400 });
+      }
+      update.location = trimmed;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
     }
 
     // Update user role
     const { error: updateError } = await supabase
       .from('users')
-      .update({ role })
+      .update(update)
       .eq('id', id);
 
     if (updateError) {

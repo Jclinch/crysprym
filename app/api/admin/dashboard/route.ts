@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createClient(cookies());
 
-    // Check if user is admin
+    // Check if user is staff (admin/superadmin)
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,22 +21,30 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (userError || userData?.role !== 'admin') {
+    const role = userData?.role;
+    if (userError || !role || !['admin', 'superadmin'].includes(role)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     // Get dashboard statistics
-    const [
-      { count: totalShipments },
-      { count: activeShipments },
-      { count: totalUsers },
-      { count: adminUsers },
-    ] = await Promise.all([
+    const [{ count: totalShipments }, { count: activeShipments }] = await Promise.all([
       supabase.from('shipments').select('*', { count: 'exact', head: true }),
-      supabase.from('shipments').select('*', { count: 'exact', head: true }).in('status', ['confirmed', 'in_transit']),
-      supabase.from('users').select('*', { count: 'exact', head: true }),
-      supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+      supabase
+        .from('shipments')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['confirmed', 'in_transit']),
     ]);
+
+    let totalUsers = 0;
+    let adminUsers = 0;
+    if (role === 'superadmin') {
+      const [{ count: totalUsersCount }, { count: adminUsersCount }] = await Promise.all([
+        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+      ]);
+      totalUsers = totalUsersCount || 0;
+      adminUsers = adminUsersCount || 0;
+    }
 
     // Get recent shipments
     const { data: recentShipments, error: shipmentsError } = await supabase
@@ -61,6 +69,7 @@ export async function GET(request: NextRequest) {
       totalUsers: totalUsers || 0,
       adminUsers: adminUsers || 0,
       recentShipments: recentShipments || [],
+      isSuperadmin: role === 'superadmin',
     });
   } catch (error) {
     console.error('Admin dashboard error:', error);

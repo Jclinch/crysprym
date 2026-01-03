@@ -71,8 +71,10 @@ export default function SignInPage() {
 
     if (contentType.includes("application/json")) {
       const data = await res.json();
-      const userRole = data.user?.role || 'user';
-      if (userRole === 'admin') {
+      const userRole = data.user?.role || "user";
+      if (userRole === "superadmin") {
+        router.push("/superadmin/dashboard");
+      } else if (userRole === "admin") {
         router.push("/admin/dashboard");
       } else {
         router.push("/dashboard");
@@ -82,9 +84,6 @@ export default function SignInPage() {
       router.push("/dashboard");
     }
   };
-
-  const handleGoogle = () => {};
-  const handleApple = () => {};
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -155,7 +154,7 @@ export default function SignInPage() {
                 </svg>
 
                 <input
-                  className={`w-full pl-11 pr-4 h-[44px] text-[14px] bg-white border rounded-[10px] transition-all focus:ring-2 focus:ring-[#3B3E56] focus:border-transparent ${
+                  className={`w-full pl-11 pr-4 h-11 text-[14px] bg-white border rounded-[10px] transition-all focus:ring-2 focus:ring-[#3B3E56] focus:border-transparent ${
                     errors.email
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300"
@@ -194,7 +193,7 @@ export default function SignInPage() {
                 </svg>
 
                 <input
-                  className={`w-full pl-11 pr-12 h-[44px] text-[14px] border rounded-[10px] transition-all focus:ring-2 focus:ring-[#3B3E56] ${
+                  className={`w-full pl-11 pr-12 h-11 text-[14px] border rounded-[10px] transition-all focus:ring-2 focus:ring-[#3B3E56] ${
                     errors.password
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300"
@@ -298,15 +297,8 @@ export default function SignInPage() {
 
          
 
-          {/* SIGN UP LINK */}
           <p className="mt-8 text-center text-[14px] text-gray-600">
-            Don’t have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-[#3B3E56] font-semibold hover:text-[#14151c] cursor-pointer"
-            >
-              Sign Up
-            </Link>
+            Need an account? Contact your administrator.
           </p>
         </div>
       </div>

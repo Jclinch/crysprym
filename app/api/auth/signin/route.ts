@@ -59,11 +59,22 @@ export async function POST(request: NextRequest) {
       .eq('id', authData.user.id)
       .single();
 
+    const roleToRedirect = (role?: string | null) => {
+      if (role === 'superadmin') return '/superadmin/dashboard';
+      if (role === 'admin') return '/admin/dashboard';
+      return '/dashboard';
+    };
+
     // If user profile row doesn't exist yet, rely on DB trigger to create it.
     // Redirect based on email as a temporary fallback; middleware will enforce role-based access.
     if (!user) {
-      const fallbackIsAdmin = ['admin@cryspryms.com', 'officialsunnyugwu@gmail.com'].includes(authData.user.email!);
-      const redirectUrl = fallbackIsAdmin ? '/admin/dashboard' : '/dashboard';
+      const emailLower = (authData.user.email || '').toLowerCase();
+      const redirectUrl =
+        emailLower === 'officialsunnyugwu@gmail.com'
+          ? '/superadmin/dashboard'
+          : emailLower === 'admin@cryspryms.com'
+            ? '/admin/dashboard'
+            : '/dashboard';
       const redirectResponse = NextResponse.redirect(new URL(redirectUrl, request.url));
       response.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
@@ -75,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Role correction is handled by DB migrations/triggers; avoid client updates that can hit RLS.
 
     // Redirect based on role (server-side)
-    const redirectUrl = user.role === 'admin' ? '/admin/dashboard' : '/dashboard';
+    const redirectUrl = roleToRedirect(user.role);
     const redirectResponse = NextResponse.redirect(new URL(redirectUrl, request.url));
 
     // Preserve cookies set during auth

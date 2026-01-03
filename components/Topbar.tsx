@@ -4,22 +4,24 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { LayoutDashboard, Users, BarChart3, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Users } from 'lucide-react';
 
 type NavItem = { href: string; label: string; icon: React.ReactNode };
 
-const adminNavItems: NavItem[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-  { href: '/admin/users', label: 'User Management', icon: <Users className="w-4 h-4" /> },
-  { href: '/admin/analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
-  { href: '/admin/settings', label: 'Settings', icon: <SettingsIcon className="w-4 h-4" /> },
+const buildNavItems = (basePath: string): NavItem[] => [
+  { href: `${basePath}/dashboard`, label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { href: `${basePath}/analytics`, label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+  ...(basePath === '/superadmin'
+    ? [{ href: `${basePath}/users`, label: 'User Management', icon: <Users className="w-4 h-4" /> }]
+    : []),
 ];
 
-const Topbar = () => {
+const Topbar = ({ basePath = '/admin' }: { basePath?: string }) => {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
   const [userEmail, setUserEmail] = useState<string>('');
+  const navItems = buildNavItems(basePath);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -41,7 +43,7 @@ const Topbar = () => {
 
   const isActive = (href: string) => {
     // Consider hash routes active when on dashboard
-    if (href.includes('#') && pathname === '/admin/dashboard') return true;
+    if (href.includes('#') && pathname === `${basePath}/dashboard`) return true;
     return pathname === href;
   };
 
@@ -70,7 +72,7 @@ const Topbar = () => {
       {/* Top tab switch navigation */}
       <nav className="px-4 sm:px-6 pb-4">
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 sm:overflow-x-auto sm:whitespace-nowrap">
-          {adminNavItems.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}

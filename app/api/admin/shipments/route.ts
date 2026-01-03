@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(cookies());
     const { searchParams } = new URL(request.url);
 
-    // Check if user is admin
+    // Check if user is staff (admin/superadmin)
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (userError || userData?.role !== 'admin') {
+    const role = userData?.role;
+    if (userError || !role || !['admin', 'superadmin'].includes(role)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
         progress_step,
         sender_name,
         receiver_name,
+        receiver_contact,
         origin_location,
         destination,
         items_description,
@@ -60,7 +62,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      query = query.eq('status', status);
+      // UI filters by progress_step (pending/in_transit/out_for_delivery/delivered).
+      // DB `status` is shipment_status (created/confirmed/in_transit/delivered/...).
+      if (['pending', 'in_transit', 'out_for_delivery', 'delivered'].includes(status)) {
+        query = query.eq('progress_step', status);
+      } else {
+        query = query.eq('status', status);
+      }
     }
 
     const { data: shipments, error, count } = await query

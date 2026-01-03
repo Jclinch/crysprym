@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS public.users (
   email text UNIQUE,
   full_name text,
   last_sign_in_at timestamptz,
-  role text DEFAULT 'user'::text CHECK (role = ANY (ARRAY['user'::text, 'admin'::text])),
+  role text DEFAULT 'user'::text CHECK (role = ANY (ARRAY['user'::text, 'admin'::text, 'superadmin'::text])),
+  location text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -104,8 +105,32 @@ BEGIN
 
   -- Add role to users if missing
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role') THEN
-    ALTER TABLE public.users ADD COLUMN role text DEFAULT 'user'::text CHECK (role = ANY (ARRAY['user'::text, 'admin'::text]));
+    ALTER TABLE public.users ADD COLUMN role text DEFAULT 'user'::text CHECK (role = ANY (ARRAY['user'::text, 'admin'::text, 'superadmin'::text]));
   END IF;
+
+  -- Add location to users if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'location') THEN
+    ALTER TABLE public.users ADD COLUMN location text;
+  END IF;
+END
+$$;
+
+-- Ensure role constraint accepts superadmin (safe)
+DO $$
+BEGIN
+  BEGIN
+    ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+  EXCEPTION WHEN undefined_table THEN
+    NULL;
+  END;
+
+  BEGIN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_role_check
+      CHECK (role = ANY (ARRAY['user'::text, 'admin'::text, 'superadmin'::text]));
+  EXCEPTION WHEN duplicate_object THEN
+    NULL;
+  END;
 END
 $$;
 
@@ -198,8 +223,23 @@ CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.users 
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE id = auth.uid() AND role IN ('admin', 'superadmin')
   );
+$$;
+
+-- Function to check if current user is superadmin
+CREATE OR REPLACE FUNCTION public.is_superadmin() RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'superadmin'
+  );
+$$;
+
+-- Function to get current user's assigned location
+CREATE OR REPLACE FUNCTION public.current_user_location() RETURNS text
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT u.location FROM public.users u WHERE u.id = auth.uid();
 $$;
 
 -- Function to set updated_at timestamp
@@ -329,11 +369,12 @@ CREATE POLICY "Users: insert own profile" ON public.users
   FOR INSERT TO authenticated
   WITH CHECK (id = auth.uid());
 
--- Admin can view all users
+-- SuperAdmin can view all users
 DROP POLICY IF EXISTS "Users: admin select all" ON public.users;
-CREATE POLICY "Users: admin select all" ON public.users
+DROP POLICY IF EXISTS "Users: superadmin select all" ON public.users;
+CREATE POLICY "Users: superadmin select all" ON public.users
   FOR SELECT TO authenticated
-  USING (public.is_admin());
+  USING (public.is_superadmin());
 
 -- ============================================
 -- 11. RLS POLICIES - Shipments
@@ -341,10 +382,22 @@ CREATE POLICY "Users: admin select all" ON public.users
 DROP POLICY IF EXISTS "Shipments: select own" ON public.shipments;
 DROP POLICY IF EXISTS "Shipments: admin select all" ON public.shipments;
 DROP POLICY IF EXISTS "shipments_select_authenticated" ON public.shipments;
+DROP POLICY IF EXISTS "shipments_select_location_or_admin" ON public.shipments;
 
--- Allow SELECT for any authenticated user (shared shipment history)
-CREATE POLICY "shipments_select_authenticated" ON public.shipments
-  FOR SELECT TO authenticated USING (true);
+-- Allow SELECT only for shipments sent from or to the user's location;
+-- admins/superadmins can read all shipments.
+CREATE POLICY "shipments_select_location_or_admin" ON public.shipments
+  FOR SELECT TO authenticated
+  USING (
+    public.is_admin()
+    OR (
+      public.current_user_location() IS NOT NULL
+      AND (
+        origin_location = public.current_user_location()
+        OR destination = public.current_user_location()
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "Shipments: insert own" ON public.shipments;
 CREATE POLICY "Shipments: insert own" ON public.shipments
@@ -387,7 +440,16 @@ DROP POLICY IF EXISTS "Shipment events: select authenticated" ON public.shipment
 
 CREATE POLICY "Shipment events: select authenticated" ON public.shipment_events
   FOR SELECT TO authenticated
-  USING (true);
+  USING (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.shipments s
+      WHERE s.id = shipment_id
+        AND public.current_user_location() IS NOT NULL
+        AND (s.origin_location = public.current_user_location() OR s.destination = public.current_user_location())
+    )
+  );
 
 DROP POLICY IF EXISTS "Shipment events: insert by shipment owner or creator" ON public.shipment_events;
 CREATE POLICY "Shipment events: insert by shipment owner or creator" ON public.shipment_events
@@ -446,7 +508,16 @@ DROP POLICY IF EXISTS "Shipment attachments: select authenticated" ON public.shi
 
 CREATE POLICY "Shipment attachments: select authenticated" ON public.shipment_attachments
   FOR SELECT TO authenticated
-  USING (true);
+  USING (
+    public.is_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM public.shipments s
+      WHERE s.id = shipment_id
+        AND public.current_user_location() IS NOT NULL
+        AND (s.origin_location = public.current_user_location() OR s.destination = public.current_user_location())
+    )
+  );
 
 DROP POLICY IF EXISTS "Shipment attachments: insert by shipment owner" ON public.shipment_attachments;
 CREATE POLICY "Shipment attachments: insert by shipment owner" ON public.shipment_attachments

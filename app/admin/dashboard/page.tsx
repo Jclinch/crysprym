@@ -22,6 +22,8 @@ interface ShipmentRow {
   shipment_date?: string;
   destination?: string;
   delivery_location?: string;
+  origin_location?: string;
+  receiver_contact?: { phone?: string; email?: string } | null;
   items_description?: string;
   itemsDescription?: string;
   description?: string;
@@ -41,7 +43,9 @@ interface NormalizedShipment {
   progressStep: string;
   senderName: string;
   description: string;
+  originLocation: string;
   destination: string;
+  receiverPhone: string;
   createdAt: string;
   shipmentDate: string;
 }
@@ -52,6 +56,7 @@ interface DashboardStats {
   totalUsers: number;
   adminUsers: number;
   recentShipments: ShipmentRow[];
+  isSuperadmin?: boolean;
 }
 
 // Detailed shipment data from Supabase for modal
@@ -90,6 +95,8 @@ export default function AdminDashboard() {
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [newLocation, setNewLocation] = useState('');
+  const [newReceiverName, setNewReceiverName] = useState('');
+  const [newWeight, setNewWeight] = useState('');
   // Waybill editing removed from admin; users provide on creation
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [newImagePreview, setNewImagePreview] = useState('');
@@ -107,7 +114,10 @@ export default function AdminDashboard() {
     if (showLoading) setShipmentsLoading(true);
     try {
       const params = new URLSearchParams();
-      params.set('limit', '20');
+      // Load a large page so the table shows all shipments.
+      // If this becomes too large, we can add pagination later.
+      params.set('limit', '5000');
+      params.set('page', '1');
       if (search.trim()) params.set('search', search.trim());
       if (statusFilter !== 'all') params.set('status', statusFilter);
 
@@ -200,7 +210,9 @@ export default function AdminDashboard() {
     return {
       id: row.id,
       trackingNumber: (row.trackingNumber || row.tracking_number || '').toString(),
+      originLocation: (row.origin_location || '').toString(),
       destination: (row.destination || row.delivery_location || '').toString(),
+      receiverPhone: (row.receiver_contact?.phone || '').toString(),
       description: (row.items_description || row.itemsDescription || row.description || '').toString(),
       status: status,
       progressStep: displayStatus,
@@ -245,7 +257,9 @@ export default function AdminDashboard() {
       return {
         trackingNumber: s.trackingNumber || '—',
         senderName: s.senderName || '—',
+        originLocation: s.originLocation || '—',
         destination: s.destination || '—',
+        receiverPhone: s.receiverPhone || '—',
         description: s.description || '—',
         status: getStatusLabel(s.progressStep),
         shipmentDate,
@@ -255,7 +269,9 @@ export default function AdminDashboard() {
     const csv = toCsv(rows, [
       { key: 'trackingNumber', header: 'Waybill Number' },
       { key: 'senderName', header: 'Sender' },
+      { key: 'originLocation', header: 'Origin' },
       { key: 'destination', header: 'Destination' },
+      { key: 'receiverPhone', header: 'Receiver Phone' },
       { key: 'description', header: 'Description' },
       { key: 'status', header: 'Status' },
       { key: 'shipmentDate', header: 'Shipment Date' },
@@ -308,6 +324,7 @@ export default function AdminDashboard() {
 
   // Modal handlers
   const openModal = async (shipment: NormalizedShipment) => {
+    if (!stats?.isSuperadmin) return;
     setSelectedShipment(shipment);
     setNewStatus(shipment.progressStep);
     setIsModalOpen(true);
@@ -324,6 +341,10 @@ export default function AdminDashboard() {
         console.error('Failed to fetch shipment details:', error);
       } else {
         setShipmentDetails(data);
+
+        setNewReceiverName((data?.receiver_name || '').toString());
+        setNewWeight(data?.weight != null ? String(data.weight) : '');
+
         // Use progress_step for the dropdown (fallback to status-based mapping)
         const progressStep = data.progress_step || 
           (data.status === 'created' ? 'pending' : 
@@ -344,6 +365,8 @@ export default function AdminDashboard() {
     setShipmentDetails(null);
     setNewStatus('');
     setNewLocation('');
+    setNewReceiverName('');
+    setNewWeight('');
     setNewImageFile(null);
     setNewImagePreview('');
     setUploadingImage(false);
@@ -382,12 +405,24 @@ export default function AdminDashboard() {
         }
       }
 
+      let weightNumber: number | undefined;
+      if (newWeight.trim()) {
+        const parsed = Number(newWeight);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          alert('Weight must be a valid number greater than 0');
+          return;
+        }
+        weightNumber = parsed;
+      }
+
       const res = await fetch(`/api/admin/shipments/${selectedShipment.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           status: newStatus, 
           location: newLocation,
+          receiverName: newReceiverName,
+          weight: weightNumber,
           packageImageBucket,
           packageImagePath,
           packageImageUrl,
@@ -477,37 +512,59 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-[#94A3B8] mb-2">Total Users</p>
-              <p className="text-3xl font-bold text-[#1E293B]">{stats?.totalUsers ?? 0}</p>
-            </div>
-            <div className="flex items-center justify-center w-10 h-10 rounded-md bg-[#F0F9F4]">
-              <Users className="text-[#10B981]" />
-            </div>
-          </div>
-        </Card>
+        {stats?.isSuperadmin ? (
+          <>
+            <Card>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-[#94A3B8] mb-2">Total Users</p>
+                  <p className="text-3xl font-bold text-[#1E293B]">{stats?.totalUsers ?? 0}</p>
+                </div>
+                <div className="flex items-center justify-center w-10 h-10 rounded-md bg-[#F0F9F4]">
+                  <Users className="text-[#10B981]" />
+                </div>
+              </div>
+            </Card>
 
-        <Card>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-[#94A3B8] mb-2">Admin Users</p>
-              <p className="text-3xl font-bold text-[#1E293B]">{stats?.adminUsers ?? 0}</p>
+            <Card>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-[#94A3B8] mb-2">Admin Users</p>
+                  <p className="text-3xl font-bold text-[#1E293B]">{stats?.adminUsers ?? 0}</p>
+                </div>
+                <div className="flex items-center justify-center w-10 h-10 rounded-md bg-[#FFF7FE]">
+                  <Crown className="text-[#6366F1]" />
+                </div>
+              </div>
+            </Card>
+          </>
+        ) : (
+          <Card>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-[#94A3B8] mb-2">Recent Activity</p>
+                <p className="text-sm text-[#475569]">Shipments overview enabled</p>
+              </div>
+              <div className="flex items-center justify-center w-10 h-10 rounded-md bg-[#EEF2F6]">
+                <Crown className="text-[#0F2940]" />
+              </div>
             </div>
-            <div className="flex items-center justify-center w-10 h-10 rounded-md bg-[#FFF7FE]">
-              <Crown className="text-[#6366F1]" />
-            </div>
-          </div>
-        </Card>
+          </Card>
+        )}
       </div>
 
       {/* Shipment Management */}
       <Card id="shipments">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-[#1E293B]">Shipment Management</h2>
-            <p className="text-sm text-[#94A3B8]">Search and manage recent shipments</p>
+            <h2 className="text-xl font-semibold text-[#1E293B]">
+              {stats?.isSuperadmin ? 'Shipment Management' : 'Shipment Overview'}
+            </h2>
+            <p className="text-sm text-[#94A3B8]">
+              {stats?.isSuperadmin
+                ? 'Search, view, and update shipments'
+                : 'Search and view shipments'}
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -558,13 +615,19 @@ export default function AdminDashboard() {
 
         {/* Desktop table */}
         <div className="hidden md:block overflow-hidden rounded-md border border-[#EEF2F6]">
-          <div className="bg-[#EFEFEF] text-gray-950 grid grid-cols-6 gap-4 items-center px-6 py-4 text-sm font-medium">
+          <div
+            className={`bg-[#EFEFEF] text-gray-950 grid gap-4 items-center px-6 py-4 text-sm font-medium ${
+              stats?.isSuperadmin ? 'grid-cols-8' : 'grid-cols-7'
+            }`}
+          >
             <div>Waybill Number</div>
+            <div>Origin</div>
             <div>Destination</div>
+            <div>Receiver Phone</div>
             <div>Description</div>
             <div>Status</div>
+            {stats?.isSuperadmin && <div>Action</div>}
             <div className="text-right">Shipment Date</div>
-            <div className="text-right">Action</div>
           </div>
 
           <div className="divide-y divide-gray-100 bg-white">
@@ -574,12 +637,23 @@ export default function AdminDashboard() {
               shipments.map((shipment) => {
                 const displayDate = formatDateOnly(shipment.shipmentDate) || formatDateOnly(shipment.createdAt) || '';
                 return (
-                  <div key={shipment.id} className="grid grid-cols-6 gap-4 items-center px-6 py-6">
+                  <div
+                    key={shipment.id}
+                    className={`w-full text-left grid gap-4 items-center px-6 py-6 ${
+                      stats?.isSuperadmin ? 'grid-cols-8' : 'grid-cols-7'
+                    } hover:bg-[#F8FAFC] transition-colors`}
+                  >
                     <div className="text-sm font-semibold text-[#0F2940]">
                       {shipment.trackingNumber}
                     </div>
+                    <div className="text-sm text-[#475569] truncate">
+                      {shipment.originLocation || '—'}
+                    </div>
                     <div className="text-sm text-[#475569]">
                       {shipment.destination || '—'}
+                    </div>
+                    <div className="text-sm text-[#475569]">
+                      {shipment.receiverPhone || '—'}
                     </div>
                     <div className="text-sm text-[#475569]">
                       {shipment.description || '—'}
@@ -592,17 +666,19 @@ export default function AdminDashboard() {
                         {getStatusLabel(shipment.progressStep)}
                       </span>
                     </div>
+                    {stats?.isSuperadmin && (
+                      <div>
+                        <Button
+                          size="small"
+                          variant="secondary"
+                          onClick={() => openModal(shipment)}
+                        >
+                          Update
+                        </Button>
+                      </div>
+                    )}
                     <div className="text-right text-sm text-[#94A3B8]">
                       {displayDate || '—'}
-                    </div>
-                    <div className="text-right">
-                      <Button
-                        variant="secondary"
-                        onClick={() => openModal(shipment)}
-                        className="px-2 ml-34 py-2 bg-black text-white hover:bg-[#29292a]"
-                      >
-                        Update
-                      </Button>
                     </div>
                   </div>
                 );
@@ -621,7 +697,10 @@ export default function AdminDashboard() {
             shipments.map((shipment) => {
               const displayDate = formatDateOnly(shipment.shipmentDate) || formatDateOnly(shipment.createdAt) || '';
               return (
-                <div key={shipment.id} className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+                <div
+                  key={shipment.id}
+                  className="w-full text-left rounded-xl border border-[#E2E8F0] bg-white p-4 hover:bg-[#F8FAFC] transition-colors"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-sm text-[#94A3B8]">Waybill Number</div>
@@ -637,8 +716,16 @@ export default function AdminDashboard() {
 
                   <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
                     <div>
+                      <div className="text-[#94A3B8]">Origin</div>
+                      <div className="text-[#475569]">{shipment.originLocation || '—'}</div>
+                    </div>
+                    <div>
                       <div className="text-[#94A3B8]">Destination</div>
                       <div className="text-[#475569]">{shipment.destination || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[#94A3B8]">Receiver Phone</div>
+                      <div className="text-[#475569]">{shipment.receiverPhone || '—'}</div>
                     </div>
                     <div>
                       <div className="text-[#94A3B8]">Description</div>
@@ -650,15 +737,19 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="mt-4">
-                    <Button
-                      variant="secondary"
-                      onClick={() => openModal(shipment)}
-                      className="w-full bg-black text-white hover:bg-[#29292a]"
-                    >
-                      Update
-                    </Button>
-                  </div>
+                  {stats?.isSuperadmin && (
+                    <div className="mt-4">
+                      <Button
+                        size="small"
+                        variant="secondary"
+                        onClick={() => openModal(shipment)}
+                        className="w-full"
+                      >
+                        Update
+                      </Button>
+                    </div>
+                  )}
+
                 </div>
               );
             })
@@ -668,8 +759,8 @@ export default function AdminDashboard() {
         </div>
       </Card>
 
-      {/* Shipment Details Modal */}
-      {isModalOpen && selectedShipment && (
+      {/* Shipment Details Modal (SuperAdmin only) */}
+      {stats?.isSuperadmin && isModalOpen && selectedShipment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* Backdrop */}
           <div
@@ -728,6 +819,11 @@ export default function AdminDashboard() {
                     <div>
                       <p className="text-gray-500">Receiver&apos;s Name</p>
                       <p className="font-medium">{shipmentDetails?.receiver_name || '—'}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Receiver&apos;s Phone</p>
+                      <p className="font-medium">{shipmentDetails?.receiver_contact?.phone || '—'}</p>
                     </div>
 
                     <div>
@@ -809,6 +905,29 @@ export default function AdminDashboard() {
                       <option value="delivered">Delivered</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  </div>
+
+                  {/* Receiver Name */}
+                  <label className="text-sm mb-1 text-gray-600">Receiver Name</label>
+                  <div className="mb-4">
+                    <Input
+                      value={newReceiverName}
+                      onChange={(e) => setNewReceiverName(e.target.value)}
+                      placeholder="Receiver name"
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Weight */}
+                  <label className="text-sm mb-1 text-gray-600">Weight (kg)</label>
+                  <div className="mb-4">
+                    <Input
+                      value={newWeight}
+                      onChange={(e) => setNewWeight(e.target.value)}
+                      placeholder="e.g. 2.5"
+                      inputMode="decimal"
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Location */}

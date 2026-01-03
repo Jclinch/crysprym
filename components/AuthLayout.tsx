@@ -1,5 +1,5 @@
 // src/components/AuthLayout.tsx
-// Layout for authentication pages - app/page-path: /signin, /signup
+// Layout for authentication pages - app/page-path: /signin
 
 import React from 'react';
 
