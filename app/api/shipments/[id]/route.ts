@@ -4,20 +4,27 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
-);
-
-function getUserIdFromAuth(request: NextRequest): string | null {
-  const cookieStore = request.cookies;
-  const authToken = cookieStore.get('auth_token')?.value;
-
-  if (!authToken) return null;
-
+async function getUserIdFromAuth(request: NextRequest): Promise<string | null> {
   try {
-    const decoded = JSON.parse(Buffer.from(authToken, 'base64').toString());
-    return decoded.userId;
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) return null;
+    const token = authHeader.replace('Bearer ', '');
+
+    const supabaseAuth = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error } = await supabaseAuth.auth.getUser();
+    if (error || !user) return null;
+    return user.id;
   } catch {
     return null;
   }
@@ -28,19 +35,33 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = getUserIdFromAuth(request);
+    const userId = await getUserIdFromAuth(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
 
+    // Use a Supabase client authorized with the user's token to satisfy RLS
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '') || '';
+    const supabaseDb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+
     // Get shipment
-    const { data: shipment, error: shipmentError } = await supabase
+    const { data: shipment, error: shipmentError } = await supabaseDb
       .from('shipments')
       .select('*')
       .eq('id', id)
-      .eq('user_id', userId)
       .single();
 
     if (shipmentError || !shipment) {
@@ -51,11 +72,11 @@ export async function GET(
     }
 
     // Get tracking events
-    const { data: events, error: eventsError } = await supabase
-      .from('tracking_events')
+    const { data: events, error: eventsError } = await supabaseDb
+      .from('shipment_events')
       .select('*')
       .eq('shipment_id', shipment.id)
-      .order('event_timestamp', { ascending: true });
+      .order('event_time', { ascending: true });
 
     if (eventsError) {
       return NextResponse.json(

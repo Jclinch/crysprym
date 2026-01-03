@@ -45,7 +45,7 @@ export const LiveTrackingSchema = z.object({
   trackingNumber: z
     .string()
     .min(5, 'Tracking number is required')
-    .regex(/^BR-\d{6}-\d{6}$/, 'Invalid tracking number format'),
+    .regex(/^CRY-\d{3}-\d{4}$/i, 'Invalid tracking number format'),
 });
 
 export type LiveTrackingFormData = z.infer<typeof LiveTrackingSchema>;

@@ -36,8 +36,14 @@ export default function ForgotPasswordPage() {
           "If an account exists for this email, we've sent a password reset link. Please check your inbox."
         );
       }
-    } catch (e: any) {
-      setError(e?.message || "Unexpected error. Please try again.");
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : typeof e === 'object' && e !== null && 'message' in e
+            ? String((e as { message: unknown }).message)
+            : 'Unexpected error. Please try again.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

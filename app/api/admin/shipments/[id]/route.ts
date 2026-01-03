@@ -64,9 +64,22 @@ export async function PATCH(
       updateData.destination = location.trim();
     }
 
-    // Include tracking number (waybill) if provided
-    if (waybillNumber && waybillNumber.trim() && waybillNumber !== 'not-assigned') {
-      updateData.tracking_number = waybillNumber.trim();
+    // Optionally override tracking number if explicitly provided
+    if (typeof waybillNumber === 'string' && waybillNumber.trim()) {
+      const normalized = waybillNumber
+        .trim()
+        .replace(/[\u2010-\u2015\u2212]/g, '-')
+        .replace(/\s+/g, '')
+        .toUpperCase();
+
+      if (!/^CRY-\d{3}-\d{4}$/.test(normalized)) {
+        return NextResponse.json(
+          { error: 'Invalid waybill number format. Expected CRY-123-4567' },
+          { status: 400 }
+        );
+      }
+
+      updateData.tracking_number = normalized;
     }
 
     // Include image fields if provided

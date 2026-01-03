@@ -9,6 +9,7 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client';
 
 interface TrackingEvent {
   eventType: string;
@@ -57,7 +58,19 @@ export default function ShipmentDetailsPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     const fetchShipment = async () => {
       try {
-        const response = await fetch(`/api/shipments/${id}`);
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError('Unauthorized');
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch(`/api/shipments/${id}`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
         if (!response.ok) {
           setError('Shipment not found');
           setIsLoading(false);

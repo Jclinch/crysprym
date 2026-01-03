@@ -133,7 +133,7 @@ return (
                     </span>
                     <input
                       className="w-full pl-11 pr-4 h-11 text-sm border border-[#E6E7EB] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2e2622]"
-                      placeholder="BR-251212-984470"
+                      placeholder="CRY-123-4567"
                       value={trackingNumber}
                       onChange={(e) => setTrackingNumber(e.target.value)}
                       autoCapitalize="characters"
@@ -161,7 +161,7 @@ return (
           <Card>
             <div className="py-10 text-center text-[#94A3B8]">
               <p className="mb-1">Enter a Waybill number to view real-time shipment status</p>
-              <p className="text-xs">Format: BR-251212-984470</p>
+              <p className="text-xs">Format: CRY-123-4567</p>
             </div>
           </Card>
         )}

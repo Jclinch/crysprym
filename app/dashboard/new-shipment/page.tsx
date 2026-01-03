@@ -21,7 +21,6 @@ export default function NewShipmentPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
-    waybillNumber: '',
     shipmentDate: '',
     senderName: '',
     receiverName: '',
@@ -52,7 +51,6 @@ export default function NewShipmentPage() {
   };
 
   const isFormValid =
-    formData.waybillNumber &&
     formData.shipmentDate &&
     formData.senderName &&
     formData.receiverName &&
@@ -116,7 +114,6 @@ export default function NewShipmentPage() {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          waybillNumber: formData.waybillNumber,
           shipmentDate: formData.shipmentDate,
           senderName: formData.senderName,
           receiverName: formData.receiverName,
@@ -137,11 +134,10 @@ export default function NewShipmentPage() {
         return;
       }
 
-      const shipment = await response.json();
+      await response.json();
       
       // Reset form and redirect
       setFormData({
-        waybillNumber: '',
         shipmentDate: '',
         senderName: '',
         receiverName: '',
@@ -200,21 +196,8 @@ export default function NewShipmentPage() {
               ))}
             </div>
 
-            {/* Waybill & Shipment Date */}
+            {/* Shipment Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[13px] font-medium mb-2">
-                  Waybill Number
-                </label>
-                <input
-                  name="waybillNumber"
-                  value={formData.waybillNumber}
-                  onChange={handleInputChange}
-                  placeholder="e.g. Way-251212-984470"
-                  className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
-                />
-              </div>
-
               <div>
                 <label className="block text-[13px] font-medium mb-2">
                   Shipment Date

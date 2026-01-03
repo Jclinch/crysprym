@@ -3,18 +3,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-// Server-side Supabase client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
-  {
-    auth: {
-      persistSession: false,
-    },
-  }
-);
 
 async function getUserIdFromAuth(request: NextRequest): Promise<string | null> {
   try {
@@ -84,7 +72,6 @@ export async function GET(request: NextRequest) {
     let query = supabaseDb
       .from('shipments')
       .select('*')
-      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (status !== 'all') {
@@ -150,8 +137,9 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Set tracking number to 'not-assigned' if not provided (admin will set it later)
-    const trackingNumber = body.waybillNumber && body.waybillNumber.trim() ? body.waybillNumber : 'not-assigned';
+    // Let the DB auto-generate a CRY-XXX-XXXX tracking number when none is provided.
+    const providedTrackingNumber = typeof body.waybillNumber === 'string' ? body.waybillNumber.trim() : '';
+    const trackingNumber = providedTrackingNumber ? providedTrackingNumber : null;
 
     const { data, error } = await supabaseDb
       .from('shipments')

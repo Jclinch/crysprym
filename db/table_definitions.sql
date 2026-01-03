@@ -124,10 +124,11 @@ end $$;
 -- Allow authenticated users to select their own shipments
 do $$
 begin
-  create policy "Authenticated users can read own shipments"
+  create policy "shipments_select_authenticated"
   on public.shipments
   for select
-  using (user_id = auth.uid());
+  to authenticated
+  using (true);
 exception when duplicate_object then
   null;
 end $$;

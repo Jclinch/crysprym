@@ -55,7 +55,6 @@ export default function HistoryPage() {
         let query = supabase
           .from('shipments')
           .select('*')
-          .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         // Apply status filter

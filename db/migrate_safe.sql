@@ -180,6 +180,13 @@ ALTER TABLE public.shipment_attachments ENABLE ROW LEVEL SECURITY;
 -- 7. CREATE HELPER FUNCTIONS
 -- ============================================
 
+-- Create (or ensure) a sequence used for non-repeating 7-digit tracking IDs
+CREATE SEQUENCE IF NOT EXISTS shipment_tracking_seq START 100000;
+
+-- Bound the sequence so we never repeat within 7 digits.
+-- This guarantees uniqueness for 9,999,999 generated IDs (no cycling).
+ALTER SEQUENCE shipment_tracking_seq MINVALUE 1 MAXVALUE 9999999 NO CYCLE;
+
 -- Function to get current user id
 CREATE OR REPLACE FUNCTION public.current_user_id() RETURNS uuid
 LANGUAGE sql SECURITY DEFINER STABLE AS $$
@@ -211,10 +218,27 @@ CREATE OR REPLACE FUNCTION public.fn_generate_tracking_number()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  seq_val bigint;
+  prefix text := 'CRY';
+  modulus bigint := 10000000; -- 10^7
+  multiplier bigint := 48271; -- coprime with 10^7
+  scrambled bigint;
+  digits text;
 BEGIN
-  IF NEW.tracking_number IS NULL OR NEW.tracking_number = '' THEN
-    NEW.tracking_number = 'TRK' || TO_CHAR(now(), 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::text, 1, 8));
+  IF NEW.tracking_number IS NOT NULL AND NEW.tracking_number <> '' AND NEW.tracking_number <> 'not-assigned' THEN
+    RETURN NEW;
   END IF;
+
+  seq_val := nextval('shipment_tracking_seq');
+
+  -- Generate a 7-digit, non-repeating value by applying a bijection over 0..9,999,999.
+  -- With the sequence bounded to 1..9,999,999 and NO CYCLE, this will not repeat.
+  scrambled := (multiplier * seq_val) % modulus;
+  digits := lpad(scrambled::text, 7, '0');
+
+  -- Example: CRY-123-4567  (CRY-{3 digits}-{4 digits})
+  NEW.tracking_number := prefix || '-' || substr(digits, 1, 3) || '-' || substr(digits, 4, 4);
   RETURN NEW;
 END;
 $$;
@@ -315,9 +339,12 @@ CREATE POLICY "Users: admin select all" ON public.users
 -- 11. RLS POLICIES - Shipments
 -- ============================================
 DROP POLICY IF EXISTS "Shipments: select own" ON public.shipments;
-CREATE POLICY "Shipments: select own" ON public.shipments
-  FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Shipments: admin select all" ON public.shipments;
+DROP POLICY IF EXISTS "shipments_select_authenticated" ON public.shipments;
+
+-- Allow SELECT for any authenticated user (shared shipment history)
+CREATE POLICY "shipments_select_authenticated" ON public.shipments
+  FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Shipments: insert own" ON public.shipments;
 CREATE POLICY "Shipments: insert own" ON public.shipments
@@ -356,14 +383,11 @@ CREATE POLICY "Shipments: admin delete all" ON public.shipments
 -- 12. RLS POLICIES - Shipment Events
 -- ============================================
 DROP POLICY IF EXISTS "Shipment events: select by shipment owner" ON public.shipment_events;
-CREATE POLICY "Shipment events: select by shipment owner" ON public.shipment_events
+DROP POLICY IF EXISTS "Shipment events: select authenticated" ON public.shipment_events;
+
+CREATE POLICY "Shipment events: select authenticated" ON public.shipment_events
   FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.shipments s
-      WHERE s.id = shipment_id AND s.user_id = auth.uid()
-    )
-  );
+  USING (true);
 
 DROP POLICY IF EXISTS "Shipment events: insert by shipment owner or creator" ON public.shipment_events;
 CREATE POLICY "Shipment events: insert by shipment owner or creator" ON public.shipment_events
@@ -418,14 +442,11 @@ CREATE POLICY "Shipment events: admin update" ON public.shipment_events
 -- 13. RLS POLICIES - Shipment Attachments
 -- ============================================
 DROP POLICY IF EXISTS "Shipment attachments: select by shipment owner" ON public.shipment_attachments;
-CREATE POLICY "Shipment attachments: select by shipment owner" ON public.shipment_attachments
+DROP POLICY IF EXISTS "Shipment attachments: select authenticated" ON public.shipment_attachments;
+
+CREATE POLICY "Shipment attachments: select authenticated" ON public.shipment_attachments
   FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.shipments s
-      WHERE s.id = shipment_id AND s.user_id = auth.uid()
-    )
-  );
+  USING (true);
 
 DROP POLICY IF EXISTS "Shipment attachments: insert by shipment owner" ON public.shipment_attachments;
 CREATE POLICY "Shipment attachments: insert by shipment owner" ON public.shipment_attachments
