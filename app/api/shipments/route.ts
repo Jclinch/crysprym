@@ -113,6 +113,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    const receiverPhone = typeof body.receiverPhone === 'string' ? body.receiverPhone.trim() : '';
+
     // shipmentDate should be an ISO date string (YYYY-MM-DD)
     const shipmentDate = typeof body.shipmentDate === 'string' ? body.shipmentDate.trim() : '';
     if (!shipmentDate) {
@@ -149,6 +151,7 @@ export async function POST(request: NextRequest) {
           tracking_number: trackingNumber,
           sender_name: body.senderName,
           receiver_name: body.receiverName,
+          receiver_contact: receiverPhone ? { phone: receiverPhone } : null,
           items_description: body.itemsDescription,
           weight: body.weight,
           origin_location: body.originLocation,

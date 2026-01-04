@@ -24,6 +24,7 @@ export default function NewShipmentPage() {
     shipmentDate: '',
     senderName: '',
     receiverName: '',
+    receiverPhone: '',
     itemsDescription: '',
     weight: '',
     originLocation: '',
@@ -54,6 +55,7 @@ export default function NewShipmentPage() {
     formData.shipmentDate &&
     formData.senderName &&
     formData.receiverName &&
+    formData.receiverPhone &&
     formData.itemsDescription &&
     formData.weight &&
     formData.originLocation &&
@@ -117,6 +119,7 @@ export default function NewShipmentPage() {
           shipmentDate: formData.shipmentDate,
           senderName: formData.senderName,
           receiverName: formData.receiverName,
+          receiverPhone: formData.receiverPhone,
           itemsDescription: formData.itemsDescription,
           weight: formData.weight,
           originLocation: formData.originLocation,
@@ -141,6 +144,7 @@ export default function NewShipmentPage() {
         shipmentDate: '',
         senderName: '',
         receiverName: '',
+        receiverPhone: '',
         itemsDescription: '',
         weight: '',
         originLocation: '',
@@ -194,6 +198,21 @@ export default function NewShipmentPage() {
                   />
                 </div>
               ))}
+            </div>
+
+            {/* Receiver Phone */}
+            <div className="mb-4 w-full md:w-1/2">
+              <label className="block text-[13px] font-medium text-gray-700 mb-2">
+                Receiver&apos;s Phone Number
+              </label>
+              <input
+                type="tel"
+                name="receiverPhone"
+                value={formData.receiverPhone}
+                onChange={handleInputChange}
+                placeholder="e.g. +234 801 234 5678"
+                className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
+              />
             </div>
 
             {/* Shipment Date */}
