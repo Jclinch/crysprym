@@ -29,6 +29,7 @@ interface ShipmentRow {
   shipment_date?: string;
   latest_event_time?: string;
   estimated_delivery_date?: string;
+  weight?: number | string | null;
 }
 
 export default function HistoryPage() {
@@ -52,11 +53,32 @@ export default function HistoryPage() {
           return;
         }
 
+        // Get the user's profile location (used to scope shipment history)
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('location')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Failed to fetch user profile location', profileError);
+        }
+
+        const userLocation = (profile as { location?: string | null } | null)?.location || null;
+        // If no location is set, show no shipments (matches requirement: location-scoped only)
+        if (!userLocation) {
+          if (isMounted) setShipments([]);
+          return;
+        }
+
         // Build base query
         let query = supabase
           .from('shipments')
           .select('*')
           .order('created_at', { ascending: false });
+
+        // Only show shipments sent from or to the user's location
+        query = query.or(`origin_location.eq.${userLocation},destination.eq.${userLocation}`);
 
         // Apply status filter
         if (filterStatus !== 'all') {
@@ -160,6 +182,7 @@ export default function HistoryPage() {
       receiverPhone: (row.receiver_contact?.phone || '').toString(),
       description: (row.itemsDescription || row.items_description || '').toString(),
       status: (row.status || '').toString(),
+      weightKg: row.weight == null ? '' : String(row.weight),
       shipmentDate: (row.shipment_date || '').toString(),
       createdAt: (row.createdAt || row.created_at || '').toString(),
       dateTime: (row.latest_event_time || row.createdAt || row.created_at || '').toString(),
@@ -167,17 +190,56 @@ export default function HistoryPage() {
     };
   };
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
+    const shipmentIds = shipments.map((s) => s.id).filter(Boolean);
+
+    const deliveredAtById: Record<string, string> = {};
+    if (shipmentIds.length > 0) {
+      const { data, error } = await supabase
+        .from('shipment_events')
+        .select('shipment_id,event_time')
+        .eq('event_type', 'delivered')
+        .in('shipment_id', Array.from(new Set(shipmentIds)));
+
+      if (error) {
+        console.error('Failed to fetch delivered events for CSV:', error);
+      } else {
+        type DeliveredEventRow = { shipment_id: string; event_time: string };
+        const rows = (data || []) as unknown as DeliveredEventRow[];
+        for (const r of rows) {
+          const shipmentId = r.shipment_id;
+          const eventTime = r.event_time;
+          if (!shipmentId || !eventTime) continue;
+
+          const existing = deliveredAtById[shipmentId];
+          if (!existing) {
+            deliveredAtById[shipmentId] = eventTime;
+            continue;
+          }
+
+          const existingTime = new Date(existing).getTime();
+          const nextTime = new Date(eventTime).getTime();
+          if (Number.isFinite(nextTime) && (!Number.isFinite(existingTime) || nextTime > existingTime)) {
+            deliveredAtById[shipmentId] = eventTime;
+          }
+        }
+      }
+    }
+
     const rows = shipments.map((s) => {
       const row = normalize(s);
+      const deliveredAt = deliveredAtById[row.id];
+      const deliveryDate = deliveredAt ? formatDateOnly(deliveredAt) : '';
       return {
         trackingNumber: row.trackingNumber || '—',
         origin: row.origin || '—',
         destination: row.destination || '—',
         receiverPhone: row.receiverPhone || '—',
+        weightKg: row.weightKg || '—',
         description: row.description || '—',
         status: getStatusLabel(row.status),
         shipmentDate: formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '',
+        deliveryDate: deliveryDate || '—',
       };
     });
 
@@ -185,10 +247,12 @@ export default function HistoryPage() {
       { key: 'trackingNumber', header: 'Waybill Number' },
       { key: 'origin', header: 'Origin' },
       { key: 'destination', header: 'Destination' },
-      { key: 'receiverPhone', header: "Receiver Phone" },
+      { key: 'receiverPhone', header: 'Receiver Phone' },
+      { key: 'weightKg', header: 'Weight (kg)' },
       { key: 'description', header: 'Description' },
       { key: 'status', header: 'Status' },
       { key: 'shipmentDate', header: 'Shipment Date' },
+      { key: 'deliveryDate', header: 'Delivery Date' },
     ]);
 
     downloadCsv(`shipment-history-${new Date().toISOString().slice(0, 10)}.csv`, csv);

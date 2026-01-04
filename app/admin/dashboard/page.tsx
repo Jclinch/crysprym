@@ -34,6 +34,7 @@ interface ShipmentRow {
   sender_name?: string;
   senderName?: string;
   progress_step?: string;
+  weight?: number | string | null;
 }
 
 interface NormalizedShipment {
@@ -46,6 +47,7 @@ interface NormalizedShipment {
   originLocation: string;
   destination: string;
   receiverPhone: string;
+  weightKg: string;
   createdAt: string;
   shipmentDate: string;
 }
@@ -217,10 +219,53 @@ export default function AdminDashboard() {
       status: status,
       progressStep: displayStatus,
       senderName: (row.senderName || row.sender_name || '').toString(),
+      weightKg: row.weight == null ? '' : String(row.weight),
       createdAt: (row.createdAt || row.created_at || row.latest_event_time || '').toString(),
       shipmentDate: (row.shipment_date || '').toString(),
     };
   };
+
+  const fetchDeliveredDates = useCallback(
+    async (shipmentIds: string[]) => {
+      const uniqueIds = Array.from(new Set(shipmentIds)).filter(Boolean);
+      if (uniqueIds.length === 0) return {} as Record<string, string>;
+
+      const { data, error } = await supabase
+        .from('shipment_events')
+        .select('shipment_id,event_time')
+        .eq('event_type', 'delivered')
+        .in('shipment_id', uniqueIds);
+
+      if (error) {
+        console.error('Failed to fetch delivered events:', error);
+        return {} as Record<string, string>;
+      }
+
+      const deliveredAtByShipmentId: Record<string, string> = {};
+      type DeliveredEventRow = { shipment_id: string; event_time: string };
+      const rows = (data || []) as unknown as DeliveredEventRow[];
+      for (const row of rows) {
+        const shipmentId = row.shipment_id;
+        const eventTime = row.event_time;
+        if (!shipmentId || !eventTime) continue;
+
+        const existing = deliveredAtByShipmentId[shipmentId];
+        if (!existing) {
+          deliveredAtByShipmentId[shipmentId] = eventTime;
+          continue;
+        }
+
+        const existingTime = new Date(existing).getTime();
+        const nextTime = new Date(eventTime).getTime();
+        if (Number.isFinite(nextTime) && (!Number.isFinite(existingTime) || nextTime > existingTime)) {
+          deliveredAtByShipmentId[shipmentId] = eventTime;
+        }
+      }
+
+      return deliveredAtByShipmentId;
+    },
+    [supabase]
+  );
 
   const formatDate = (iso: string) => {
     try {
@@ -251,18 +296,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleExportShipmentsCsv = () => {
+  const handleExportShipmentsCsv = async () => {
+    const deliveredAtById = await fetchDeliveredDates(shipments.map((s) => s.id));
+
     const rows = shipments.map((s) => {
       const shipmentDate = formatDateOnly(s.shipmentDate) || formatDateOnly(s.createdAt) || '';
+      const deliveredAt = deliveredAtById[s.id];
+      const deliveryDate = deliveredAt ? formatDateOnly(deliveredAt) : '';
       return {
         trackingNumber: s.trackingNumber || '—',
         senderName: s.senderName || '—',
         originLocation: s.originLocation || '—',
         destination: s.destination || '—',
         receiverPhone: s.receiverPhone || '—',
+        weightKg: s.weightKg || '—',
         description: s.description || '—',
         status: getStatusLabel(s.progressStep),
         shipmentDate,
+        deliveryDate: deliveryDate || '—',
       };
     });
 
@@ -272,9 +323,11 @@ export default function AdminDashboard() {
       { key: 'originLocation', header: 'Origin' },
       { key: 'destination', header: 'Destination' },
       { key: 'receiverPhone', header: 'Receiver Phone' },
+      { key: 'weightKg', header: 'Weight (kg)' },
       { key: 'description', header: 'Description' },
       { key: 'status', header: 'Status' },
       { key: 'shipmentDate', header: 'Shipment Date' },
+      { key: 'deliveryDate', header: 'Delivery Date' },
     ]);
 
     downloadCsv(`shipment-management-${new Date().toISOString().slice(0, 10)}.csv`, csv);
