@@ -34,7 +34,7 @@ export async function PATCH(
     const update: Record<string, unknown> = {};
 
     if (typeof role === 'string') {
-      if (!['user', 'admin'].includes(role)) {
+      if (!['user', 'admin', 'superadmin'].includes(role)) {
         return NextResponse.json({ error: 'Valid role is required' }, { status: 400 });
       }
       update.role = role;

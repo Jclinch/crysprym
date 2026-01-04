@@ -68,7 +68,11 @@ export default function AdminUsers() {
     fetchUsers();
   }, [fetchUsers, searchTerm, currentPage]);
 
-  const updateUserRole = async (userId: string, newRole: 'user' | 'admin') => {
+  const updateUserRole = async (userId: string, newRole: User['role'], currentRole?: User['role']) => {
+    if (currentRole === 'superadmin' && newRole !== 'superadmin') {
+      const ok = window.confirm('You are about to remove SuperAdmin privileges from this user. Continue?');
+      if (!ok) return;
+    }
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
@@ -259,14 +263,11 @@ export default function AdminUsers() {
                     <select
                       className="text-sm border border-[#E2E8F0] rounded px-2 py-1"
                       value={user.role}
-                      onChange={(e) => updateUserRole(user.id, e.target.value as 'user' | 'admin')}
-                      disabled={user.role === 'superadmin'}
+                      onChange={(e) => updateUserRole(user.id, e.target.value as User['role'], user.role)}
                     >
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
-                      <option value="superadmin" disabled>
-                        SuperAdmin
-                      </option>
+                      <option value="superadmin">SuperAdmin</option>
                     </select>
                   </td>
                 </tr>
@@ -330,14 +331,11 @@ export default function AdminUsers() {
                 <select
                   className="w-full text-sm border border-[#E2E8F0] rounded px-3 py-2 bg-white"
                   value={user.role}
-                  onChange={(e) => updateUserRole(user.id, e.target.value as 'user' | 'admin')}
-                  disabled={user.role === 'superadmin'}
+                  onChange={(e) => updateUserRole(user.id, e.target.value as User['role'], user.role)}
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
-                  <option value="superadmin" disabled>
-                    SuperAdmin
-                  </option>
+                  <option value="superadmin">SuperAdmin</option>
                 </select>
               </div>
             </div>
