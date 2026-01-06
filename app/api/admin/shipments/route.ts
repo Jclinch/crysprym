@@ -2,6 +2,7 @@
 // Admin Shipments API - GET /api/admin/shipments
 
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createSbAdmin } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -27,6 +28,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
+    // Use service role for staff listing to avoid relying on RLS policy drift.
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!serviceRoleKey || !supabaseUrl) {
+      return NextResponse.json(
+        { error: 'Server misconfiguration: missing Supabase URL or Service Role Key' },
+        { status: 500 }
+      );
+    }
+    const supabaseAdmin = createSbAdmin(supabaseUrl, serviceRoleKey);
+
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || '';
@@ -34,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('shipments')
       .select(`
         id,

@@ -165,3 +165,74 @@ export async function PATCH(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = createClient(cookies());
+    const { id } = await params;
+
+    // Check if user is superadmin
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || userData?.role !== 'superadmin') {
+      return NextResponse.json({ error: 'SuperAdmin access required' }, { status: 403 });
+    }
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!serviceRoleKey || !supabaseUrl) {
+      return NextResponse.json(
+        { error: 'Server misconfiguration: missing Supabase URL or Service Role Key' },
+        { status: 500 }
+      );
+    }
+    const supabaseAdmin = createSbAdmin(supabaseUrl, serviceRoleKey);
+
+    // Fetch shipment to cleanup storage (best-effort)
+    const { data: shipment } = await supabaseAdmin
+      .from('shipments')
+      .select('id,package_image_bucket,package_image_path')
+      .eq('id', id)
+      .single();
+
+    const bucket = (shipment as any)?.package_image_bucket as string | null | undefined;
+    const path = (shipment as any)?.package_image_path as string | null | undefined;
+    if (bucket && path) {
+      try {
+        await supabaseAdmin.storage.from(bucket).remove([path]);
+      } catch {
+        // ignore storage cleanup errors
+      }
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from('shipments')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('Error deleting shipment:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete shipment', details: deleteError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ message: 'Shipment deleted successfully' }, { status: 200 });
+  } catch (error) {
+    console.error('Admin shipment delete error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

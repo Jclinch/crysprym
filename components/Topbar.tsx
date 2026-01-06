@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { LayoutDashboard, BarChart3, Users } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Users, MapPin } from 'lucide-react';
 
 type NavItem = { href: string; label: string; icon: React.ReactNode };
 
@@ -12,7 +12,10 @@ const buildNavItems = (basePath: string): NavItem[] => [
   { href: `${basePath}/dashboard`, label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
   { href: `${basePath}/analytics`, label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
   ...(basePath === '/superadmin'
-    ? [{ href: `${basePath}/users`, label: 'User Management', icon: <Users className="w-4 h-4" /> }]
+    ? [
+        { href: `${basePath}/users`, label: 'User Management', icon: <Users className="w-4 h-4" /> },
+        { href: `${basePath}/settings`, label: 'Location Management', icon: <MapPin className="w-4 h-4" /> },
+      ]
     : []),
 ];
 

@@ -12,7 +12,6 @@ import { createClient } from '@/utils/supabase/client';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Box, Truck, Users, Crown, Filter, X, Package, ChevronDown } from 'lucide-react';
-import { LOCATIONS } from '@/lib/locations';
 import { downloadCsv, toCsv } from '@/utils/csv';
 
 interface ShipmentRow {
@@ -104,11 +103,37 @@ export default function AdminDashboard() {
   const [newImagePreview, setNewImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [locations, setLocations] = useState<string[]>([]);
   
   const supabase = createClient();
 
   useEffect(() => {
     fetchDashboardStats();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadLocations = async () => {
+      try {
+        const res = await fetch('/api/locations');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data?.locations) ? data.locations : [];
+        type LocationApiRow = { name?: string | null };
+        const names = (list as LocationApiRow[])
+          .map((l) => (l?.name || '').toString())
+          .filter(Boolean);
+        if (mounted) setLocations(names);
+      } catch {
+        // ignore
+      }
+    };
+    loadLocations();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Reusable fetch function for shipments
@@ -423,6 +448,36 @@ export default function AdminDashboard() {
     setNewImageFile(null);
     setNewImagePreview('');
     setUploadingImage(false);
+    setIsDeleting(false);
+  };
+
+  const handleDeleteShipment = async () => {
+    if (!selectedShipment) return;
+    const ok = window.confirm(
+      `Delete shipment ${selectedShipment.trackingNumber || ''}? This cannot be undone.`
+    );
+    if (!ok) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/shipments/${selectedShipment.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to delete shipment');
+        return;
+      }
+
+      setShipments((prev) => prev.filter((s) => s.id !== selectedShipment.id));
+      closeModal();
+    } catch (e) {
+      console.error('Failed to delete shipment:', e);
+      alert('Failed to delete shipment');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleUpdateStatus = async () => {
@@ -992,7 +1047,7 @@ export default function AdminDashboard() {
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm appearance-none bg-white focus:border-[#2563EB] focus:outline-none"
                     >
                       <option value="">Select location (optional)</option>
-                      {LOCATIONS.map((loc) => (
+                      {locations.map((loc) => (
                         <option key={loc} value={loc}>
                           {loc}
                         </option>
@@ -1043,6 +1098,14 @@ export default function AdminDashboard() {
                     className="mt-6 w-full h-12 bg-black text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isUpdating || uploadingImage ? 'Updating...' : 'Update Shipment'}
+                  </Button>
+
+                  <Button
+                    onClick={handleDeleteShipment}
+                    disabled={isDeleting || isUpdating || uploadingImage}
+                    className="mt-3 w-full h-12 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Shipment'}
                   </Button>
                 </div>
               </div>

@@ -3,20 +3,22 @@
 // // Path: /dashboard/new-shipment
 // // Pixel Perfect New Shipment Page matching Figma design
 // // ============================================
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs } from '@/components/Sidebar';
 import { createClient } from '@/utils/supabase/client';
-import { LOCATIONS } from '@/lib/locations';
 
 const STORAGE_BUCKET = 'package-images';
 
 export default function NewShipmentPage() {
   const supabase = createClient();
+
+  const [locations, setLocations] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -33,6 +35,29 @@ export default function NewShipmentPage() {
 
   const [packageImage, setPackageImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    const loadLocations = async () => {
+      try {
+        const res = await fetch('/api/locations');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data?.locations) ? data.locations : [];
+        type LocationApiRow = { name?: string | null };
+        const names = (list as LocationApiRow[])
+          .map((l) => (l?.name || '').toString())
+          .filter(Boolean);
+        if (mounted) setLocations(names);
+      } catch {
+        // ignore
+      }
+    };
+    loadLocations();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -291,7 +316,7 @@ export default function NewShipmentPage() {
                   className="h-12 px-4 border border-gray-300 rounded-md w-full bg-white"
                 >
                   <option value="">Select origin</option>
-                  {LOCATIONS.map((loc) => (
+                  {locations.map((loc) => (
                     <option key={loc} value={loc}>
                       {loc}
                     </option>
@@ -310,7 +335,7 @@ export default function NewShipmentPage() {
                   className="h-12 px-4 border border-gray-300 rounded-md w-full bg-white"
                 >
                   <option value="">Select destination</option>
-                  {LOCATIONS.map((loc) => (
+                  {locations.map((loc) => (
                     <option key={loc} value={loc}>
                       {loc}
                     </option>

@@ -3,12 +3,11 @@
 
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { LOCATIONS } from '@/lib/locations';
 
 interface User {
   id: string;
@@ -28,6 +27,8 @@ export default function AdminUsers() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const [locations, setLocations] = useState<string[]>([]);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string>('');
@@ -40,7 +41,25 @@ export default function AdminUsers() {
     location: '',
   });
 
-  const locations = useMemo(() => [...LOCATIONS], []);
+  useEffect(() => {
+    let mounted = true;
+    const loadLocations = async () => {
+      try {
+        const res = await fetch('/api/locations');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data?.locations) ? data.locations : [];
+        const names = list.map((l: any) => (l?.name || '').toString()).filter(Boolean);
+        if (mounted) setLocations(names);
+      } catch {
+        // ignore
+      }
+    };
+    loadLocations();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
