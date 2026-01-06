@@ -200,21 +200,51 @@ export async function DELETE(
     }
     const supabaseAdmin = createSbAdmin(supabaseUrl, serviceRoleKey);
 
-    // Fetch shipment to cleanup storage (best-effort)
-    const { data: shipment } = await supabaseAdmin
+    // Fetch shipment first (we may need its image reference for best-effort storage cleanup)
+    const { data: shipment, error: fetchError } = await supabaseAdmin
       .from('shipments')
       .select('id,package_image_bucket,package_image_path')
       .eq('id', id)
       .single();
 
-    const bucket = (shipment as any)?.package_image_bucket as string | null | undefined;
-    const path = (shipment as any)?.package_image_path as string | null | undefined;
-    if (bucket && path) {
-      try {
-        await supabaseAdmin.storage.from(bucket).remove([path]);
-      } catch {
-        // ignore storage cleanup errors
-      }
+    if (fetchError) {
+      console.error('Error fetching shipment for deletion:', fetchError);
+      return NextResponse.json(
+        { error: 'Shipment not found or access denied', details: fetchError.message },
+        { status: 404 }
+      );
+    }
+
+    type ShipmentImageData = { package_image_bucket?: string | null; package_image_path?: string | null };
+    const bucket = (shipment as unknown as ShipmentImageData)?.package_image_bucket ?? null;
+    const path = (shipment as unknown as ShipmentImageData)?.package_image_path ?? null;
+
+    // Delete dependent rows first to avoid FK constraint errors in DBs that don't have ON DELETE CASCADE.
+    // (Your production DB currently has shipment_events_shipment_id_fkey without cascade.)
+    const { error: deleteEventsError } = await supabaseAdmin
+      .from('shipment_events')
+      .delete()
+      .eq('shipment_id', id);
+
+    if (deleteEventsError) {
+      console.error('Error deleting shipment events:', deleteEventsError);
+      return NextResponse.json(
+        { error: 'Failed to delete shipment events', details: deleteEventsError.message },
+        { status: 500 }
+      );
+    }
+
+    const { error: deleteAttachmentsError } = await supabaseAdmin
+      .from('shipment_attachments')
+      .delete()
+      .eq('shipment_id', id);
+
+    if (deleteAttachmentsError) {
+      console.error('Error deleting shipment attachments:', deleteAttachmentsError);
+      return NextResponse.json(
+        { error: 'Failed to delete shipment attachments', details: deleteAttachmentsError.message },
+        { status: 500 }
+      );
     }
 
     const { error: deleteError } = await supabaseAdmin
@@ -228,6 +258,15 @@ export async function DELETE(
         { error: 'Failed to delete shipment', details: deleteError.message },
         { status: 500 }
       );
+    }
+
+    // Best-effort: cleanup storage after the DB delete succeeds.
+    if (bucket && path) {
+      try {
+        await supabaseAdmin.storage.from(bucket).remove([path]);
+      } catch {
+        // ignore storage cleanup errors
+      }
     }
 
     return NextResponse.json({ message: 'Shipment deleted successfully' }, { status: 200 });

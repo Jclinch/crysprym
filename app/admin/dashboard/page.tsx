@@ -466,15 +466,18 @@ export default function AdminDashboard() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to delete shipment');
+        const errorMsg = err.error || 'Failed to delete shipment';
+        const details = err.details ? ` (${err.details})` : '';
+        console.error('Delete shipment API error:', { status: res.status, error: err });
+        alert(errorMsg + details);
         return;
       }
 
       setShipments((prev) => prev.filter((s) => s.id !== selectedShipment.id));
       closeModal();
     } catch (e) {
-      console.error('Failed to delete shipment:', e);
-      alert('Failed to delete shipment');
+      console.error('Failed to delete shipment (network/exception):', e);
+      alert('Failed to delete shipment: ' + (e instanceof Error ? e.message : 'Unknown error'));
     } finally {
       setIsDeleting(false);
     }
