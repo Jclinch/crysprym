@@ -4,7 +4,6 @@
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card } from '@/components/Card';
-import { Button } from '@/components/Button';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
@@ -16,6 +15,7 @@ interface ShipmentDetail {
   receiver_name: string;
   items_description: string;
   weight: number;
+  package_quantity?: number | null;
   origin_location: string;
   destination: string;
   package_image_url?: string;
@@ -132,14 +132,6 @@ export default function ShipmentDetailPage() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    if (status === 'created') return 'Pending';
-    return status
-      .replace(/_/g, ' ')
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-  };
-
   const formatDateTime = (dt: string) => {
     try {
       return new Date(dt).toLocaleString('en-US', {
@@ -241,6 +233,11 @@ export default function ShipmentDetailPage() {
               <div>
                 <p className="text-xs text-[#94A3B8] mb-1">Weight</p>
                 <p className="text-sm text-[#1E293B]">{shipment.weight} kg</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-[#94A3B8] mb-1">Package Quantity</p>
+                <p className="text-sm text-[#1E293B]">{shipment.package_quantity ?? '—'}</p>
               </div>
 
               <div>

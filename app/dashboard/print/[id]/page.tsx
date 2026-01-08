@@ -21,6 +21,7 @@ type Shipment = {
   receiver_contact: Contact;
   items_description: string | null;
   weight: number | null;
+  package_quantity: number | null;
   origin_location: string | null;
   destination: string | null;
   shipment_date?: string | null;
@@ -97,7 +98,7 @@ export default function PrintShipmentPage() {
       const { data, error: shipmentError } = await supabase
         .from('shipments')
         .select(
-          'id, tracking_number, sender_name, sender_contact, receiver_name, receiver_contact, items_description, weight, origin_location, destination, shipment_date, created_at'
+          'id, tracking_number, sender_name, sender_contact, receiver_name, receiver_contact, items_description, weight, package_quantity, origin_location, destination, shipment_date, created_at'
         )
         .eq('id', shipmentId)
         .single();
@@ -249,6 +250,10 @@ export default function PrintShipmentPage() {
                 <div>
                   <p className="text-slate-500">Weight</p>
                   <p className="font-medium text-slate-900">{shipment.weight ?? '—'}{shipment.weight != null ? ' kg' : ''}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Package Quantity</p>
+                  <p className="font-medium text-slate-900">{shipment.package_quantity ?? '—'}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Shipment ID</p>

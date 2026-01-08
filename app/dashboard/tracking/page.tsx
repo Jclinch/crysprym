@@ -29,6 +29,7 @@ type TrackingResponse = {
     originLocation?: string;
     destination?: string;
     weight?: number;
+    packageQuantity?: number | null;
     itemsDescription?: string;
     package_image_url?: string; // snake_case from DB
     packageImageUrl?: string;   // camelCase from API response
@@ -203,6 +204,11 @@ return (
                   <div>
                     <p className="text-xs text-[#94A3B8] mb-1">Weight</p>
                     <p className="text-sm text-[#1E293B]">{data.shipment.weight ?? '—'}kg</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-[#94A3B8] mb-1">Package Quantity</p>
+                    <p className="text-sm text-[#1E293B]">{data.shipment.packageQuantity ?? '—'}</p>
                   </div>
                 </div>
 

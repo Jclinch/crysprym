@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
         destination,
         items_description,
         weight,
+        package_quantity,
         shipment_date,
         created_at,
         user_id

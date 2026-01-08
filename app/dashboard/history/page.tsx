@@ -30,6 +30,7 @@ interface ShipmentRow {
   latest_event_time?: string;
   estimated_delivery_date?: string;
   weight?: number | string | null;
+  package_quantity?: number | null;
 }
 
 export default function HistoryPage() {
@@ -180,6 +181,7 @@ export default function HistoryPage() {
       origin: (row.origin_location || '').toString(),
       destination: (row.destination || row.delivery_location || '').toString(),
       receiverPhone: (row.receiver_contact?.phone || '').toString(),
+      packageQuantity: row.package_quantity == null ? '' : String(row.package_quantity),
       description: (row.itemsDescription || row.items_description || '').toString(),
       status: (row.status || '').toString(),
       weightKg: row.weight == null ? '' : String(row.weight),
@@ -236,6 +238,7 @@ export default function HistoryPage() {
         destination: row.destination || '—',
         receiverPhone: row.receiverPhone || '—',
         weightKg: row.weightKg || '—',
+        packageQuantity: row.packageQuantity || '—',
         description: row.description || '—',
         status: getStatusLabel(row.status),
         shipmentDate: formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '',
@@ -249,6 +252,7 @@ export default function HistoryPage() {
       { key: 'destination', header: 'Destination' },
       { key: 'receiverPhone', header: 'Receiver Phone' },
       { key: 'weightKg', header: 'Weight (kg)' },
+      { key: 'packageQuantity', header: 'Package Quantity' },
       { key: 'description', header: 'Description' },
       { key: 'status', header: 'Status' },
       { key: 'shipmentDate', header: 'Shipment Date' },
@@ -355,11 +359,12 @@ export default function HistoryPage() {
           <div className="space-y-4">
             {/* Desktop table */}
             <div className="hidden md:block overflow-hidden rounded-md shadow-sm">
-              <div className="bg-[#0F2940] text-white grid grid-cols-8 gap-4 items-center px-6 py-4 text-sm font-medium">
+              <div className="bg-[#0F2940] text-white grid grid-cols-9 gap-4 items-center px-6 py-4 text-sm font-medium">
                 <div>Waybill Number</div>
                 <div>Origin</div>
                 <div>Destination</div>
                 <div>Receiver Phone</div>
+                <div>Pkg Qty</div>
                 <div>Description</div>
                 <div>Status</div>
                 <div className="text-right">Shipment Date</div>
@@ -371,11 +376,12 @@ export default function HistoryPage() {
                   const row = normalize(s);
                   const displayDate = formatDateOnly(row.shipmentDate) || formatDateOnly(row.createdAt) || '';
                   return (
-                    <div key={row.id} className="grid grid-cols-8 gap-4 items-center px-6 py-6">
+                    <div key={row.id} className="grid grid-cols-9 gap-4 items-center px-6 py-6">
                       <div className="text-sm font-semibold text-[#0F2940]">{row.trackingNumber || '—'}</div>
                       <div className="text-sm text-[#475569]">{row.origin || '—'}</div>
                       <div className="text-sm text-[#475569]">{row.destination || '—'}</div>
                       <div className="text-sm text-[#475569]">{row.receiverPhone || '—'}</div>
+                      <div className="text-sm text-[#475569]">{row.packageQuantity || '—'}</div>
                       <div className="text-sm text-[#475569]">{row.description || '—'}</div>
                       <div>
                         <Badge variant={getStatusBadgeVariant(row.status)}>{getStatusLabel(row.status)}</Badge>
@@ -431,6 +437,10 @@ export default function HistoryPage() {
                       <div>
                         <div className="text-[#94A3B8]">Receiver Phone</div>
                         <div className="text-[#475569]">{row.receiverPhone || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[#94A3B8]">Package Quantity</div>
+                        <div className="text-[#475569]">{row.packageQuantity || '—'}</div>
                       </div>
                       <div>
                         <div className="text-[#94A3B8]">Description</div>

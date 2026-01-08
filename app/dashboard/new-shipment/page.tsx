@@ -14,6 +14,8 @@ import { Tabs } from '@/components/Sidebar';
 import { createClient } from '@/utils/supabase/client';
 
 const STORAGE_BUCKET = 'package-images';
+const MAX_PACKAGE_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_PACKAGE_IMAGE_LABEL = '10MB';
 
 export default function NewShipmentPage() {
   const supabase = createClient();
@@ -29,6 +31,7 @@ export default function NewShipmentPage() {
     receiverPhone: '',
     itemsDescription: '',
     weight: '',
+    packageQuantity: '1',
     originLocation: '',
     destination: '',
   });
@@ -68,8 +71,8 @@ export default function NewShipmentPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 1024 * 1024) {
-      setErrors({ image: 'Image must be under 1MB' });
+    if (file.size > MAX_PACKAGE_IMAGE_BYTES) {
+      setErrors({ image: `Image must be under ${MAX_PACKAGE_IMAGE_LABEL}` });
       return;
     }
     setPackageImage(file);
@@ -83,6 +86,8 @@ export default function NewShipmentPage() {
     formData.receiverPhone &&
     formData.itemsDescription &&
     formData.weight &&
+    Number.isFinite(Number(formData.packageQuantity)) &&
+    Number(formData.packageQuantity) >= 1 &&
     formData.originLocation &&
     formData.destination;
 
@@ -147,6 +152,7 @@ export default function NewShipmentPage() {
           receiverPhone: formData.receiverPhone,
           itemsDescription: formData.itemsDescription,
           weight: formData.weight,
+          packageQuantity: Number.parseInt(formData.packageQuantity || '1', 10),
           originLocation: formData.originLocation,
           destination: formData.destination,
           packageImageBucket,
@@ -172,6 +178,7 @@ export default function NewShipmentPage() {
         receiverPhone: '',
         itemsDescription: '',
         weight: '',
+        packageQuantity: '1',
         originLocation: '',
         destination: '',
       });
@@ -271,7 +278,8 @@ export default function NewShipmentPage() {
             </div>
 
             {/* Weight */}
-            <div className="mb-6 mt-4 w-full md:w-60">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 mt-4">
+              <div className="w-full md:w-60">
               <label className="block text-[13px] font-medium mb-2">Weight</label>
               <input
                 name="weight"
@@ -279,12 +287,26 @@ export default function NewShipmentPage() {
                 onChange={handleInputChange}
                 className="w-full h-12 px-4 border border-gray-300 rounded-md"
               />
+              </div>
+
+              <div className="w-full md:w-60">
+                <label className="block text-[13px] font-medium mb-2">Package Quantity</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  name="packageQuantity"
+                  value={formData.packageQuantity}
+                  onChange={handleInputChange}
+                  className="w-full h-12 px-4 border border-gray-300 rounded-md"
+                />
+              </div>
             </div>
 
             {/* Image Upload */}
             <div className="mb-6">
               <label className="block text-[13px] font-medium mb-2">
-                Package Image (Max 1mb)
+                Package Image (Max {MAX_PACKAGE_IMAGE_LABEL})
               </label>
 
               <label className="inline-flex items-center px-5 py-2 bg-[#eae5e5] text-[#535250] rounded-full cursor-pointer">
@@ -300,6 +322,10 @@ export default function NewShipmentPage() {
                   height={120}
                   className="mt-4 rounded-md border"
                 />
+              )}
+
+              {errors.image && (
+                <p className="mt-2 text-sm text-red-600">{errors.image}</p>
               )}
             </div>
 

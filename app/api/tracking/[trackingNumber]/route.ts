@@ -181,6 +181,7 @@ export async function GET(
         destination: shipment.destination || 'Not specified',
         itemsDescription: shipment.items_description,
         weight: shipment.weight ? parseFloat(String(shipment.weight)) : null,
+        packageQuantity: (shipment as { package_quantity?: number | null })?.package_quantity ?? null,
         packageImageUrl: shipment.package_image_url,
         status: shipment.status,
         progressStep: progressStep,

@@ -14,6 +14,9 @@ import { Button } from '@/components/Button';
 import { Box, Truck, Users, Crown, Filter, X, Package, ChevronDown } from 'lucide-react';
 import { downloadCsv, toCsv } from '@/utils/csv';
 
+const MAX_PACKAGE_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_PACKAGE_IMAGE_LABEL = '10MB';
+
 interface ShipmentRow {
   id: string;
   tracking_number?: string;
@@ -34,6 +37,7 @@ interface ShipmentRow {
   senderName?: string;
   progress_step?: string;
   weight?: number | string | null;
+  package_quantity?: number | null;
 }
 
 interface NormalizedShipment {
@@ -47,6 +51,7 @@ interface NormalizedShipment {
   destination: string;
   receiverPhone: string;
   weightKg: string;
+  packageQuantity: string;
   createdAt: string;
   shipmentDate: string;
 }
@@ -70,6 +75,7 @@ interface ShipmentDetails {
   receiver_contact: { phone?: string; email?: string } | null;
   items_description: string;
   weight: number | null;
+  package_quantity: number | null;
   origin_location: string | null;
   destination: string | null;
   package_image_url: string | null;
@@ -245,6 +251,7 @@ export default function AdminDashboard() {
       progressStep: displayStatus,
       senderName: (row.senderName || row.sender_name || '').toString(),
       weightKg: row.weight == null ? '' : String(row.weight),
+      packageQuantity: row.package_quantity == null ? '' : String(row.package_quantity),
       createdAt: (row.createdAt || row.created_at || row.latest_event_time || '').toString(),
       shipmentDate: (row.shipment_date || '').toString(),
     };
@@ -335,6 +342,7 @@ export default function AdminDashboard() {
         destination: s.destination || '—',
         receiverPhone: s.receiverPhone || '—',
         weightKg: s.weightKg || '—',
+        packageQuantity: s.packageQuantity || '—',
         description: s.description || '—',
         status: getStatusLabel(s.progressStep),
         shipmentDate,
@@ -349,6 +357,7 @@ export default function AdminDashboard() {
       { key: 'destination', header: 'Destination' },
       { key: 'receiverPhone', header: 'Receiver Phone' },
       { key: 'weightKg', header: 'Weight (kg)' },
+      { key: 'packageQuantity', header: 'Package Quantity' },
       { key: 'description', header: 'Description' },
       { key: 'status', header: 'Status' },
       { key: 'shipmentDate', header: 'Shipment Date' },
@@ -728,13 +737,14 @@ export default function AdminDashboard() {
         <div className="hidden md:block overflow-hidden rounded-md border border-[#EEF2F6]">
           <div
             className={`bg-[#EFEFEF] text-gray-950 grid gap-4 items-center px-6 py-4 text-sm font-medium ${
-              stats?.isSuperadmin ? 'grid-cols-8' : 'grid-cols-7'
+              stats?.isSuperadmin ? 'grid-cols-9' : 'grid-cols-8'
             }`}
           >
             <div>Waybill Number</div>
             <div>Origin</div>
             <div>Destination</div>
             <div>Receiver Phone</div>
+            <div>Pkg Qty</div>
             <div>Description</div>
             <div>Status</div>
             {stats?.isSuperadmin && <div>Action</div>}
@@ -751,7 +761,7 @@ export default function AdminDashboard() {
                   <div
                     key={shipment.id}
                     className={`w-full text-left grid gap-4 items-center px-6 py-6 ${
-                      stats?.isSuperadmin ? 'grid-cols-8' : 'grid-cols-7'
+                      stats?.isSuperadmin ? 'grid-cols-9' : 'grid-cols-8'
                     } hover:bg-[#F8FAFC] transition-colors`}
                   >
                     <div className="text-sm font-semibold text-[#0F2940]">
@@ -765,6 +775,9 @@ export default function AdminDashboard() {
                     </div>
                     <div className="text-sm text-[#475569]">
                       {shipment.receiverPhone || '—'}
+                    </div>
+                    <div className="text-sm text-[#475569]">
+                      {shipment.packageQuantity || '—'}
                     </div>
                     <div className="text-sm text-[#475569]">
                       {shipment.description || '—'}
@@ -837,6 +850,10 @@ export default function AdminDashboard() {
                     <div>
                       <div className="text-[#94A3B8]">Receiver Phone</div>
                       <div className="text-[#475569]">{shipment.receiverPhone || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[#94A3B8]">Package Quantity</div>
+                      <div className="text-[#475569]">{shipment.packageQuantity || '—'}</div>
                     </div>
                     <div>
                       <div className="text-[#94A3B8]">Description</div>
@@ -957,6 +974,13 @@ export default function AdminDashboard() {
                     </div>
 
                     <div>
+                      <p className="text-gray-500">Package Quantity</p>
+                      <p className="font-medium">
+                        {shipmentDetails?.package_quantity ?? '—'}
+                      </p>
+                    </div>
+
+                    <div>
                       <p className="text-gray-500">Progress Step</p>
                       <p className="font-medium">
                         {shipmentDetails?.progress_step?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '—'}
@@ -1071,8 +1095,8 @@ export default function AdminDashboard() {
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null;
                         if (!file) return;
-                        if (file.size > 1024 * 1024) { // 1MB limit
-                          alert('Image must be under 1MB');
+                        if (file.size > MAX_PACKAGE_IMAGE_BYTES) {
+                          alert(`Image must be under ${MAX_PACKAGE_IMAGE_LABEL}`);
                           return;
                         }
                         setNewImageFile(file);

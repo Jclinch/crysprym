@@ -113,6 +113,16 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // packageQuantity is optional; default to 1
+    const rawPackageQuantity = (body?.packageQuantity ?? body?.package_quantity ?? 1) as unknown;
+    const packageQuantity = Number.parseInt(String(rawPackageQuantity), 10);
+    if (!Number.isFinite(packageQuantity) || packageQuantity < 1) {
+      return NextResponse.json(
+        { error: 'packageQuantity must be an integer >= 1' },
+        { status: 400 }
+      );
+    }
+
     const receiverPhone = typeof body.receiverPhone === 'string' ? body.receiverPhone.trim() : '';
 
     // shipmentDate should be an ISO date string (YYYY-MM-DD)
@@ -154,6 +164,7 @@ export async function POST(request: NextRequest) {
           receiver_contact: receiverPhone ? { phone: receiverPhone } : null,
           items_description: body.itemsDescription,
           weight: body.weight,
+          package_quantity: packageQuantity,
           origin_location: body.originLocation,
           destination: body.destination,
           shipment_date: shipmentDate,
