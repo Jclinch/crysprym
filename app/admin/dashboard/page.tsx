@@ -94,6 +94,10 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [shipments, setShipments] = useState<NormalizedShipment[]>([]);
   const [shipmentsLoading, setShipmentsLoading] = useState(true);
+  const [shipmentsPage, setShipmentsPage] = useState(1);
+  const [shipmentsPageSize, setShipmentsPageSize] = useState(20);
+  const [shipmentsTotalCount, setShipmentsTotalCount] = useState(0);
+  const [shipmentsTotalPages, setShipmentsTotalPages] = useState(1);
   
   // Modal state
   const [selectedShipment, setSelectedShipment] = useState<NormalizedShipment | null>(null);
@@ -118,6 +122,11 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDashboardStats();
   }, []);
+
+  // Reset to page 1 when filters/page size change
+  useEffect(() => {
+    setShipmentsPage(1);
+  }, [search, statusFilter, shipmentsPageSize]);
 
   useEffect(() => {
     let mounted = true;
@@ -147,10 +156,8 @@ export default function AdminDashboard() {
     if (showLoading) setShipmentsLoading(true);
     try {
       const params = new URLSearchParams();
-      // Load a large page so the table shows all shipments.
-      // If this becomes too large, we can add pagination later.
-      params.set('limit', '5000');
-      params.set('page', '1');
+      params.set('limit', String(shipmentsPageSize));
+      params.set('page', String(shipmentsPage));
       if (search.trim()) params.set('search', search.trim());
       if (statusFilter !== 'all') params.set('status', statusFilter);
 
@@ -159,17 +166,33 @@ export default function AdminDashboard() {
         const data = await res.json();
         const rawList: ShipmentRow[] = data?.shipments || data || [];
         const list: NormalizedShipment[] = rawList.map(normalize);
+
+        const totalCount = Number(data?.totalCount ?? data?.total_count ?? 0) || 0;
+        const totalPages = Math.max(1, Number(data?.totalPages ?? data?.total_pages ?? 1) || 1);
+
+        // If filters changed and current page is now out of range, clamp and refetch.
+        if (shipmentsPage > totalPages && totalCount > 0) {
+          setShipmentsPage(totalPages);
+          return;
+        }
+
+        setShipmentsTotalCount(totalCount);
+        setShipmentsTotalPages(totalPages);
         setShipments(list);
       } else {
+        setShipmentsTotalCount(0);
+        setShipmentsTotalPages(1);
         setShipments([]);
       }
     } catch (e) {
       console.error('Failed to fetch admin shipments:', e);
+      setShipmentsTotalCount(0);
+      setShipmentsTotalPages(1);
       setShipments([]);
     } finally {
       if (showLoading) setShipmentsLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [search, statusFilter, shipmentsPage, shipmentsPageSize]);
 
   // Fetch shipments when search or filter changes (with debounce)
   useEffect(() => {
@@ -329,9 +352,29 @@ export default function AdminDashboard() {
   };
 
   const handleExportShipmentsCsv = async () => {
-    const deliveredAtById = await fetchDeliveredDates(shipments.map((s) => s.id));
+    // Export all shipments matching current filters (not just current page).
+    let exportShipments: NormalizedShipment[] = shipments;
+    try {
+      const params = new URLSearchParams();
+      params.set('limit', '5000');
+      params.set('page', '1');
+      if (search.trim()) params.set('search', search.trim());
+      if (statusFilter !== 'all') params.set('status', statusFilter);
 
-    const rows = shipments.map((s) => {
+      const res = await fetch(`/api/admin/shipments?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const rawList: ShipmentRow[] = data?.shipments || data || [];
+        exportShipments = rawList.map(normalize);
+      }
+    } catch {
+      // Fall back to current page
+      exportShipments = shipments;
+    }
+
+    const deliveredAtById = await fetchDeliveredDates(exportShipments.map((s) => s.id));
+
+    const rows = exportShipments.map((s) => {
       const shipmentDate = formatDateOnly(s.shipmentDate) || formatDateOnly(s.createdAt) || '';
       const deliveredAt = deliveredAtById[s.id];
       const deliveryDate = deliveredAt ? formatDateOnly(deliveredAt) : '';
@@ -730,6 +773,56 @@ export default function AdminDashboard() {
                 </select>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Pagination controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="text-sm text-[#64748B]">
+            {shipmentsTotalCount > 0
+              ? `Showing ${(shipmentsPage - 1) * shipmentsPageSize + 1}–${Math.min(
+                  shipmentsPage * shipmentsPageSize,
+                  shipmentsTotalCount
+                )} of ${shipmentsTotalCount}`
+              : 'Showing 0 results'}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#64748B]">Rows</span>
+              <select
+                value={String(shipmentsPageSize)}
+                onChange={(e) => setShipmentsPageSize(parseInt(e.target.value || '20', 10) || 20)}
+                className="px-2 py-1.5 text-xs rounded-md border border-[#E2E8F0] bg-white text-[#1E293B] focus:border-[#2563EB] focus:outline-none"
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+
+            <Button
+              size="small"
+              variant="secondary"
+              onClick={() => setShipmentsPage((p) => Math.max(1, p - 1))}
+              disabled={shipmentsLoading || shipmentsPage <= 1}
+            >
+              Prev
+            </Button>
+
+            <div className="text-xs text-[#64748B] px-2">
+              Page {shipmentsPage} of {shipmentsTotalPages}
+            </div>
+
+            <Button
+              size="small"
+              variant="secondary"
+              onClick={() => setShipmentsPage((p) => Math.min(shipmentsTotalPages, p + 1))}
+              disabled={shipmentsLoading || shipmentsPage >= shipmentsTotalPages}
+            >
+              Next
+            </Button>
           </div>
         </div>
 
