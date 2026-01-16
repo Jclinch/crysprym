@@ -27,6 +27,7 @@ export default function NewShipmentPage() {
   const [formData, setFormData] = useState({
     shipmentDate: '',
     senderName: '',
+    senderPhone: '',
     receiverName: '',
     receiverPhone: '',
     itemsDescription: '',
@@ -82,6 +83,7 @@ export default function NewShipmentPage() {
   const isFormValid =
     formData.shipmentDate &&
     formData.senderName &&
+    formData.senderPhone &&
     formData.receiverName &&
     formData.receiverPhone &&
     formData.itemsDescription &&
@@ -148,6 +150,7 @@ export default function NewShipmentPage() {
         body: JSON.stringify({
           shipmentDate: formData.shipmentDate,
           senderName: formData.senderName,
+          senderPhone: formData.senderPhone,
           receiverName: formData.receiverName,
           receiverPhone: formData.receiverPhone,
           itemsDescription: formData.itemsDescription,
@@ -174,6 +177,7 @@ export default function NewShipmentPage() {
       setFormData({
         shipmentDate: '',
         senderName: '',
+        senderPhone: '',
         receiverName: '',
         receiverPhone: '',
         itemsDescription: '',
@@ -232,19 +236,36 @@ export default function NewShipmentPage() {
               ))}
             </div>
 
-            {/* Receiver Phone */}
-            <div className="mb-4 w-full md:w-1/2">
-              <label className="block text-[13px] font-medium text-gray-700 mb-2">
-                Receiver&apos;s Phone Number
-              </label>
-              <input
-                type="tel"
-                name="receiverPhone"
-                value={formData.receiverPhone}
-                onChange={handleInputChange}
-                placeholder="e.g. +234 801 234 5678"
-                className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
-              />
+            <div className="flex gap-4 mb-4">
+              {/* Sender Phone */}
+              <div className="w-full md:w-1/2">
+                <label className="block text-[13px] font-medium text-gray-700 mb-2">
+                  Sender&apos;s Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="senderPhone"
+                  value={formData.senderPhone}
+                  onChange={handleInputChange}
+                  placeholder="e.g. +234 801 234 5678"
+                  className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
+                />
+              </div>
+
+              {/* Receiver Phone */}
+              <div className="w-full md:w-1/2">
+                <label className="block text-[13px] font-medium text-gray-700 mb-2">
+                  Receiver&apos;s Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="receiverPhone"
+                  value={formData.receiverPhone}
+                  onChange={handleInputChange}
+                  placeholder="e.g. +234 801 234 5678"
+                  className="w-full h-12 px-4 text-[14px] border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-200"
+                />
+              </div>
             </div>
 
             {/* Shipment Date */}

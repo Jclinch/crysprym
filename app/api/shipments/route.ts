@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     const receiverPhone = typeof body.receiverPhone === 'string' ? body.receiverPhone.trim() : '';
+    const senderPhone = typeof body.senderPhone === 'string' ? body.senderPhone.trim() : '';
 
     // shipmentDate should be an ISO date string (YYYY-MM-DD)
     const shipmentDate = typeof body.shipmentDate === 'string' ? body.shipmentDate.trim() : '';
@@ -160,6 +161,7 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           tracking_number: trackingNumber,
           sender_name: body.senderName,
+          sender_contact: senderPhone ? { phone: senderPhone } : null,
           receiver_name: body.receiverName,
           receiver_contact: receiverPhone ? { phone: receiverPhone } : null,
           items_description: body.itemsDescription,

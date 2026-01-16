@@ -33,19 +33,11 @@ function isUuid(value?: string | null) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function formatDateOnly(value?: string | null) {
-  if (!value) return '—';
-  try {
-    const isPlainDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
-    const d = new Date(isPlainDate ? `${value}T00:00:00` : value);
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return value;
-  }
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
 }
 
 export default function PrintShipmentPage() {
@@ -157,131 +149,164 @@ export default function PrintShipmentPage() {
 
   const receiverPhone = shipment.receiver_contact?.phone || '—';
   const senderPhone = shipment.sender_contact?.phone || '—';
-  const shipmentDate = formatDateOnly(shipment.shipment_date || shipment.created_at);
+  const shipmentDate = formatDate(shipment.shipment_date || shipment.created_at);
 
   return (
-    <div className="min-h-screen bg-slate-100 print:bg-white">
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: A4;
-            margin: 14mm;
-          }
-          body {
-            background: #ffffff !important;
-          }
-        }
-      `}</style>
+    <div className="min-h-screen bg-white text-slate-900">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @page { size: A5; margin: 5mm; }
+            @media print {
+              .no-print { display: none !important; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+          `,
+        }}
+      />
 
-      <div className="max-w-[900px] mx-auto p-6 print:p-0">
-        {/* Actions */}
-        <div className="flex items-center justify-between mb-4 print:hidden">
-          <Button variant="secondary" onClick={() => router.back()}>
-            Back
+      {/* Print Toolbar */}
+      <div className="no-print flex items-center justify-between p-4 bg-white border-b">
+        <Button variant="secondary" onClick={() => router.back()}>
+          Back
+        </Button>
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => window.print()}>
+            Print
           </Button>
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => window.print()}>
-              Print
-            </Button>
-          </div>
         </div>
+      </div>
 
-        {/* Document */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 print:shadow-none print:border-none relative overflow-hidden">
-          {/* Watermark */}
+      {/* Watermark */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      >
+        <div className="relative w-[520px] h-[200px]">
           <Image
             src="/logo.png"
             alt=""
-            aria-hidden="true"
-            width={520}
-            height={520}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90%] h-auto opacity-[0.06] pointer-events-none select-none"
+            fill
+            className="object-contain opacity-[0.06]"
+            priority
           />
+        </div>
+      </div>
 
-          <div className="p-6 border-b border-slate-200 flex items-start justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <Image src="/logo.png" alt="Company Logo" width={64} height={64} priority />
-              <div>
-                <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 leading-tight">CRYSPRYM Logistics</h1>
-                <p className="text-sm text-slate-600">Shipment Document</p>
-                <div className="mt-2">
-                  <p className="text-xs text-slate-500">Waybill ID</p>
-                  <p className="font-mono font-black text-3xl md:text-4xl tracking-wider text-slate-900">
-                    {shipment.tracking_number || '—'}
-                  </p>
-                </div>
+      <div className="mx-auto max-w-[900px] p-8">
+        <div className="bg-white p-8 shadow-sm">
+          {/* Header Section */}
+          <div className="grid grid-cols-[160px_1fr_260px] gap-6 items-center mb-8 pb-6 border-b-2 border-slate-200">
+            <div className="bg-slate-900 p-5 flex items-center justify-center shadow-md">
+              <Image src="/logo.png" alt="CRYSPRYM" width={140} height={48} priority />
+            </div>
+
+            <div className="flex flex-col justify-center pl-2">
+              <div className="text-2xl font-extrabold text-slate-900 tracking-wider leading-tight">
+                CRYSPRYM LOGISTICS
+              </div>
+              <div className="text-xs text-slate-500 mt-1 tracking-wide">
+                SHIPPING & DELIVERY SERVICES
               </div>
             </div>
 
-            <div className="text-right">
-              <div className="inline-flex items-center rounded-md border border-red-300 bg-red-50 px-3 py-1">
-                <span className="text-2xl font-extrabold text-red-700 tracking-widest">FRAGILE</span>
+            <div className="space-y-3">
+              <div className="relative bg-gradient-to-br from-red-600 to-red-700 text-white px-5 py-3 text-center shadow-lg overflow-hidden border-2 border-red-800">
+                <div className="absolute inset-0 opacity-10" style={{
+                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.3) 10px, rgba(255,255,255,.3) 20px)'
+                }}></div>
+                <div className="relative">
+                  <div className="text-2xl font-black tracking-wider">⚠ FRAGILE</div>
+                  <div className="text-xs font-semibold mt-1 tracking-wide">HANDLE WITH EXTREME CARE</div>
+                </div>
               </div>
-              <p className="mt-2 text-xs text-slate-500">Handle with care</p>
+              <div className="text-right text-sm bg-slate-50 px-3 py-2 rounded">
+                <span className="font-semibold text-slate-700">Date:</span>
+                <span className="ml-2 font-medium">{shipmentDate}</span>
+              </div>
             </div>
           </div>
 
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-lg border border-slate-200 p-4">
-              <h2 className="text-sm font-semibold text-slate-900">From (Origin)</h2>
-              <div className="mt-2 text-sm text-slate-700 space-y-1">
-                <p><span className="text-slate-500">Location:</span> {shipment.origin_location || '—'}</p>
-                <p><span className="text-slate-500">Sender:</span> {shipment.sender_name || '—'}</p>
-                <p><span className="text-slate-500">Phone:</span> {senderPhone}</p>
+          {/* Priority Parcel Banner */}
+          <div className="bg-slate-900 text-white px-6 py-3 mb-6 text-center shadow-md">
+            <div className="text-2xl font-black tracking-widest">PRIORITY PARCEL</div>
+          </div>
+
+          {/* From/To Sections */}
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="border border-slate-300 p-5 bg-slate-50 shadow-sm">
+              <div className="text-base font-bold mb-3 pb-2 border-b border-slate-400 text-slate-900">
+                FROM: <span className="text-slate-700">{shipment.origin_location?.toUpperCase() || '—'}</span>
+              </div>
+              <div className="space-y-2.5 text-sm">
+                <div>
+                  <span className="font-semibold text-slate-700">Name:</span>
+                  <span className="ml-2 text-slate-900">{shipment.sender_name || '—'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Location:</span>
+                  <span className="text-slate-900 mt-1 pl-2">{shipment.origin_location || '—'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Phone:</span>
+                  <span className="ml-2 text-slate-900">{senderPhone}</span>
+                </div>
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 p-4">
-              <h2 className="text-sm font-semibold text-slate-900">To (Destination)</h2>
-              <div className="mt-2 text-sm text-slate-700 space-y-1">
-                <p><span className="text-slate-500">Location:</span> {shipment.destination || '—'}</p>
-                <p><span className="text-slate-500">Receiver:</span> {shipment.receiver_name || '—'}</p>
-                <p><span className="text-slate-500">Phone:</span> {receiverPhone}</p>
+            <div className="border border-slate-300 p-5 bg-slate-50 shadow-sm">
+              <div className="text-base font-bold mb-3 pb-2 border-b border-slate-400 text-slate-900">
+                TO: <span className="text-slate-700">{shipment.destination?.toUpperCase() || '—'}</span>
+              </div>
+              <div className="space-y-2.5 text-sm">
+                <div>
+                  <span className="font-semibold text-slate-700">Name:</span>
+                  <span className="ml-2 text-slate-900">{shipment.receiver_name || '—'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Location:</span>
+                  <span className="text-slate-900 mt-1 pl-2">{shipment.destination || '—'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Phone:</span>
+                  <span className="ml-2 text-slate-900">{receiverPhone}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tracking ID and Additional Info */}
+          <div className="grid grid-cols-2 gap-6 mt-6">
+            <div className="border border-slate-300 p-5 bg-blue-50 shadow-sm">
+              <div className="text-sm font-bold mb-2 text-slate-700 uppercase tracking-wide">
+                Tracking ID
+              </div>
+              <div className="text-3xl font-black text-slate-900 tracking-wide break-all">
+                {shipment.tracking_number || '—'}
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 p-4 md:col-span-2">
-              <h2 className="text-sm font-semibold text-slate-900">Shipment Details</h2>
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-slate-700">
-                <div>
-                  <p className="text-slate-500">Shipment Date</p>
-                  <p className="font-medium text-slate-900">{shipmentDate}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Weight</p>
-                  <p className="font-medium text-slate-900">{shipment.weight ?? '—'}{shipment.weight != null ? ' kg' : ''}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Package Quantity</p>
-                  <p className="font-medium text-slate-900">{shipment.package_quantity ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Shipment ID</p>
-                  <p className="font-mono text-xs text-slate-900 break-all">{shipment.id}</p>
-                </div>
+            <div className="border border-slate-300 p-5 bg-amber-50 shadow-sm">
+              <div className="text-sm font-bold mb-2 text-slate-700 uppercase tracking-wide">
+                Additional Information
               </div>
-
-              <div className="mt-4">
-                <p className="text-slate-500 text-sm">Items Description</p>
-                <p className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{shipment.items_description || '—'}</p>
+              <div className="text-sm mb-2 text-slate-900">
+                {shipment.items_description || '—'}
+              </div>
+              <div className="text-sm mt-3 pt-3 border-t border-amber-200">
+                <span className="font-semibold text-slate-700">Weight:</span>
+                <span className="ml-2 text-lg font-bold text-slate-900">{shipment.weight ?? '—'} KG</span>
+              </div>
+              <div className="text-sm mt-3 pt-3 border-t border-amber-200">
+                <span className="font-semibold text-slate-700">Package Quantity:</span>
+                <span className="ml-2 text-lg font-bold text-slate-900">{shipment.package_quantity ?? '—'}</span>
               </div>
             </div>
+          </div>
 
-            <div className="md:col-span-2">
-              <div className="grid grid-cols-2 gap-6 mt-2">
-                <div>
-                  <p className="text-xs text-slate-500">Sender Signature</p>
-                  <div className="mt-10 border-b border-slate-300" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Receiver Signature</p>
-                  <div className="mt-10 border-b border-slate-300" />
-                </div>
-              </div>
-              <p className="mt-6 text-[11px] text-slate-500">
-                This document is generated by the system. Please verify shipment details before dispatch.
-              </p>
-            </div>
+          {/* Footer */}
+          <div className="mt-8 pt-6 border-t border-slate-200 text-xs text-slate-500 text-center space-y-1">
+            <p className="font-semibold">Handle with care • Confirm receiver identity before release</p>
           </div>
         </div>
       </div>
