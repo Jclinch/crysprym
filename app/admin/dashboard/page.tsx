@@ -26,6 +26,8 @@ interface ShipmentRow {
   delivery_location?: string;
   origin_location?: string;
   receiver_contact?: { phone?: string; email?: string } | null;
+  receiver_name?: string;
+  receiverName?: string;
   items_description?: string;
   itemsDescription?: string;
   description?: string;
@@ -50,6 +52,7 @@ interface NormalizedShipment {
   originLocation: string;
   destination: string;
   receiverPhone: string;
+  receiverName: string;
   weightKg: string;
   packageQuantity: string;
   createdAt: string;
@@ -268,6 +271,7 @@ export default function AdminDashboard() {
       trackingNumber: (row.trackingNumber || row.tracking_number || '').toString(),
       originLocation: (row.origin_location || '').toString(),
       destination: (row.destination || row.delivery_location || '').toString(),
+      receiverName: (row.receiverName || row.receiver_name || '').toString(),
       receiverPhone: (row.receiver_contact?.phone || '').toString(),
       description: (row.items_description || row.itemsDescription || row.description || '').toString(),
       status: status,
@@ -383,6 +387,7 @@ export default function AdminDashboard() {
         senderName: s.senderName || '—',
         originLocation: s.originLocation || '—',
         destination: s.destination || '—',
+        receiverName: s.receiverName || '-',
         receiverPhone: s.receiverPhone || '—',
         weightKg: s.weightKg || '—',
         packageQuantity: s.packageQuantity || '—',
@@ -398,6 +403,7 @@ export default function AdminDashboard() {
       { key: 'senderName', header: 'Sender' },
       { key: 'originLocation', header: 'Origin' },
       { key: 'destination', header: 'Destination' },
+      { key: 'receiverName', header: 'Receiver Name' },
       { key: 'receiverPhone', header: 'Receiver Phone' },
       { key: 'weightKg', header: 'Weight (kg)' },
       { key: 'packageQuantity', header: 'Package Quantity' },
